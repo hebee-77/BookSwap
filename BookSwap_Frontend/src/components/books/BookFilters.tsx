@@ -6,7 +6,10 @@ interface BookFiltersProps {
   onConditionChange: (condition: BookCondition | '') => void;
 }
 
-export const BookFilters: React.FC<BookFiltersProps> = ({ selectedCondition, onConditionChange }) => {
+export const BookFilters: React.FC<BookFiltersProps> = ({
+  selectedCondition,
+  onConditionChange,
+}) => {
   const conditions: { label: string; value: BookCondition | '' }[] = [
     { label: 'All Conditions', value: '' },
     { label: 'New', value: 'NEW' },
@@ -17,8 +20,27 @@ export const BookFilters: React.FC<BookFiltersProps> = ({ selectedCondition, onC
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filter by Condition</span>
-      <div className="flex flex-wrap gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Filter by Condition
+      </span>
+
+      {/* Mobile Select Dropdown (visible on screens smaller than md) */}
+      <div className="block md:hidden">
+        <select
+          value={selectedCondition}
+          onChange={(e) => onConditionChange(e.target.value as BookCondition | '')}
+          className="w-full text-xs font-bold text-foreground bg-background border border-border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+        >
+          {conditions.map((cond) => (
+            <option key={cond.value} value={cond.value}>
+              {cond.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Desktop Buttons List (hidden on screens smaller than md) */}
+      <div className="hidden md:flex flex-wrap gap-2">
         {conditions.map((cond) => {
           const isSelected = selectedCondition === cond.value;
           return (
@@ -28,7 +50,7 @@ export const BookFilters: React.FC<BookFiltersProps> = ({ selectedCondition, onC
               type="button"
               className={`px-4 py-2 text-xs font-semibold rounded-full border transition-all ${
                 isSelected
-                  ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary border-primary text-primary-foreground shadow-sm font-bold'
                   : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >

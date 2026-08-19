@@ -270,6 +270,15 @@ export const Navbar: React.FC = () => {
                   My Books
                 </Link>
                 <Link
+                  to="/my-reviews"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`block rounded-md px-3 py-2 text-base font-medium ${
+                    isActive('/my-reviews') ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  My Reviews
+                </Link>
+                <Link
                   to="/profile"
                   onClick={() => setIsMenuOpen(false)}
                   className={`block rounded-md px-3 py-2 text-base font-medium ${

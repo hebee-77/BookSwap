@@ -9,8 +9,6 @@ import {
   Filter,
   Trash2,
   Edit2,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   BookOpen,
   CheckCircle,
@@ -18,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookCondition } from '../../types/book';
+import { BookPagination } from '../../components/books/BookPagination';
 
 export const AdminBooksPage: React.FC = () => {
   const { user } = useAuth();
@@ -77,7 +76,6 @@ export const AdminBooksPage: React.FC = () => {
 
   const books = data?.content || [];
   const totalPages = data?.totalPages || 0;
-  const totalElements = data?.totalElements || 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -380,40 +378,11 @@ export const AdminBooksPage: React.FC = () => {
               </div>
 
               {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-border/60 pt-4">
-                  <span className="text-xs text-muted-foreground font-semibold">
-                    Showing <strong className="text-foreground">{page * size + 1}</strong> to{' '}
-                    <strong className="text-foreground">
-                      {Math.min((page + 1) * size, totalElements)}
-                    </strong>{' '}
-                    of <strong className="text-foreground">{totalElements}</strong> books
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      disabled={page === 0}
-                      onClick={() => setPage(page - 1)}
-                      className="h-8 w-8 rounded-lg"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex items-center text-xs font-bold px-3">
-                      Page {page + 1} of {totalPages}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      disabled={page >= totalPages - 1}
-                      onClick={() => setPage(page + 1)}
-                      className="h-8 w-8 rounded-lg"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <BookPagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </>
           )}
         </CardContent>
