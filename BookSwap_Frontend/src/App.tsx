@@ -107,21 +107,24 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="admin"
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
-          >
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="books" element={<AdminBooksPage />} />
-            <Route path="exchanges" element={<AdminExchangesPage />} />
-          </Route>
-          <Route path="*" element={<NotFoundPage />} />
         </Route>
+        
+        {/* Admin Dashboard layout - separate from main navbar & footer */}
+        <Route
+          path="admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="books" element={<AdminBooksPage />} />
+          <Route path="exchanges" element={<AdminExchangesPage />} />
+        </Route>
+        
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
