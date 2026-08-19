@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
-import { User, LogOut, LayoutDashboard, BookMarked, ArrowLeftRight } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, BookMarked, ArrowLeftRight, Shield } from 'lucide-react';
 
 export const UserMenu: React.FC = () => {
   const { user, logout } = useAuth();
@@ -42,7 +42,10 @@ export const UserMenu: React.FC = () => {
       .substring(0, 2);
   };
 
+  const isAdmin = user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin');
+
   const menuItems = [
+    ...(isAdmin ? [{ label: 'Admin Dashboard', path: '/admin', icon: <Shield className="h-4 w-4" /> }] : []),
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'My Books', path: '/my-books', icon: <BookMarked className="h-4 w-4" /> },
     { label: 'Swap Requests', path: '/swap-requests', icon: <ArrowLeftRight className="h-4 w-4" /> },

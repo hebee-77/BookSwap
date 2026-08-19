@@ -16,6 +16,12 @@ import { SwapRequestsPage } from './pages/SwapRequestsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { MyBooksPage } from './pages/MyBooksPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { AdminRoute } from './components/auth/AdminRoute';
+import { AdminLayout } from './layouts/AdminLayout';
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage';
+import { AdminBooksPage } from './pages/admin/AdminBooksPage';
+import { AdminExchangesPage } from './pages/admin/AdminExchangesPage';
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
@@ -83,6 +89,19 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="books" element={<AdminBooksPage />} />
+            <Route path="exchanges" element={<AdminExchangesPage />} />
+          </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

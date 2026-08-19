@@ -128,6 +128,16 @@ export const Navbar: React.FC = () => {
 
             {isAuthenticated ? (
               <>
+                {user && (user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin')) && (
+                  <Link
+                    to="/admin"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/admin') ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  >
+                    Admin
+                  </Link>
+                )}
                 <Link
                   to="/dashboard"
                   className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -230,6 +240,17 @@ export const Navbar: React.FC = () => {
 
             {isAuthenticated ? (
               <>
+                {user && (user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin')) && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block rounded-md px-3 py-2 text-base font-medium ${
+                      isActive('/admin') ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Link
                   to="/dashboard"
                   onClick={() => setIsMenuOpen(false)}
