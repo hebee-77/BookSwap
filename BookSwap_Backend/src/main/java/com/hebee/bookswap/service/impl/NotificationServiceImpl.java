@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
