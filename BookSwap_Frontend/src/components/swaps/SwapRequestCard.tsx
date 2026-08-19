@@ -10,6 +10,9 @@ import type { ExchangeRequest } from '../../types/swap';
 import { SwapStatusBadge } from './SwapStatusBadge';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
+import { reviewService } from '../../services/reviewService';
+import { ReviewDialog } from '../reviews/ReviewDialog';
+import { Star } from 'lucide-react';
 
 interface SwapRequestCardProps {
   request: ExchangeRequest;
@@ -19,6 +22,14 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState<'accept' | 'reject' | null>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  // Fetch reviews written by the user to check eligibility
+  const { data: myReviews = [] } = useQuery({
+    queryKey: ['my-reviews'],
+    queryFn: () => reviewService.getMyReviews(),
+    enabled: !!user?.id,
+  });
 
   // Fetch details for the requested book
   const { data: requestedBook, isLoading: isLoadingReqBook } = useQuery({
@@ -96,6 +107,10 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   const isOutgoing = user?.id === request.requesterId;
   const isIncoming = requestedBook && user?.id === requestedBook.ownerId;
   const isPending = request.status === 'PENDING';
+  
+  const hasReviewed = myReviews.some((r) => r.exchangeRequestId === request.id);
+  const isParticipant = user && (request.requesterId === user.id || (requestedBook && requestedBook.ownerId === user.id));
+  const canReview = request.status === 'ACCEPTED' && isParticipant && !hasReviewed;
 
   const getConditionStyles = (condition: string) => {
     switch (condition) {
@@ -245,6 +260,16 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               </Button>
             </div>
           )}
+          {canReview && (
+            <Button
+              size="sm"
+              onClick={() => setIsReviewOpen(true)}
+              className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm animate-in fade-in"
+            >
+              <Star className="h-3.5 w-3.5 fill-current" />
+              <span>Leave Review</span>
+            </Button>
+          )}
         </CardFooter>
 
         {/* Confirmation Overlays inside the card itself for speed and clean UX */}
@@ -297,6 +322,18 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
             </motion.div>
           )}
         </AnimatePresence>
+        {isReviewOpen && requestedBook && (
+          <ReviewDialog
+            isOpen={isReviewOpen}
+            onClose={() => setIsReviewOpen(false)}
+            exchangeRequestId={request.id}
+            reviewedUserName={
+              user?.id === request.requesterId
+                ? `User #${requestedBook.ownerId}`
+                : `User #${request.requesterId}`
+            }
+          />
+        )}
       </Card>
     </motion.div>
   );

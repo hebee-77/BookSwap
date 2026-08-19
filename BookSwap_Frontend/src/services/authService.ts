@@ -30,4 +30,9 @@ export const authService = {
     const response = await api.get<User[]>('/users');
     return response.data;
   },
+
+  getUserById: async (id: number): Promise<User> => {
+    const response = await api.get<User>(`/users/${id}`);
+    return response.data;
+  },
 };

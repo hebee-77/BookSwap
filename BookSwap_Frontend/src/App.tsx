@@ -16,6 +16,8 @@ import { SwapRequestsPage } from './pages/SwapRequestsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { MyBooksPage } from './pages/MyBooksPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { MyReviewsPage } from './pages/MyReviewsPage';
+import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
 import { AdminRoute } from './components/auth/AdminRoute';
 import { AdminLayout } from './layouts/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
@@ -86,6 +88,22 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="my-reviews"
+            element={
+              <ProtectedRoute>
+                <MyReviewsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="users/:id"
+            element={
+              <ProtectedRoute>
+                <PublicUserProfilePage />
               </ProtectedRoute>
             }
           />

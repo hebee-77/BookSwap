@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
-import { User, LogOut, LayoutDashboard, BookMarked, ArrowLeftRight, Shield } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, BookMarked, ArrowLeftRight, Shield, Star } from 'lucide-react';
 
 export const UserMenu: React.FC = () => {
   const { user, logout } = useAuth();
@@ -49,6 +49,7 @@ export const UserMenu: React.FC = () => {
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'My Books', path: '/my-books', icon: <BookMarked className="h-4 w-4" /> },
     { label: 'Swap Requests', path: '/swap-requests', icon: <ArrowLeftRight className="h-4 w-4" /> },
+    { label: 'My Reviews', path: '/my-reviews', icon: <Star className="h-4 w-4" /> },
     { label: 'Profile', path: '/profile', icon: <User className="h-4 w-4" /> },
   ];
 
