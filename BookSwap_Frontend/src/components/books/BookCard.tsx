@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, BookMarked, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { User, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import type { Book } from '../../types/book';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { useAuth } from '../../hooks/useAuth';
+import { BookCover } from './BookCover';
 
 interface BookCardProps {
   book: Book;
@@ -42,13 +43,19 @@ export const BookCard: React.FC<BookCardProps> = ({ book }) => {
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="h-full cursor-pointer flex flex-col"
+      className="h-full cursor-pointer flex flex-col group"
       onClick={handleCardClick}
     >
       <Card className="flex flex-col h-full border border-border bg-card overflow-hidden hover:shadow-md transition-all duration-200">
-        {/* Subtle placeholder cover layout */}
-        <div className="aspect-[16/9] w-full bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border flex items-center justify-center p-4">
-          <BookMarked className="h-12 w-12 text-primary/40" />
+        {/* Book Cover */}
+        <div className="w-full border-b border-border">
+          <BookCover
+            imageUrl={book.imageUrl}
+            title={book.title}
+            aspect="wide"
+            size="lg"
+            className="rounded-none border-none aspect-[16/10]"
+          />
         </div>
 
         <CardHeader className="p-5 pb-2">

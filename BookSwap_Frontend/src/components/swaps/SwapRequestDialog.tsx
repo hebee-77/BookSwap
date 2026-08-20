@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { X, BookOpen, AlertCircle, Check, Loader2, ArrowLeftRight } from 'lucide-react';
+import { X, AlertCircle, Check, Loader2, ArrowLeftRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
 import { swapService } from '../../services/swapService';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { BookCover } from '../books/BookCover';
 
 interface SwapRequestDialogProps {
   isOpen: boolean;
@@ -173,10 +174,8 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({ isOpen, on
                             }`}
                           >
                             <div className="flex items-start gap-3 min-w-0">
-                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                                isSelected ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground group-hover:bg-muted-foreground/10 group-hover:text-foreground'
-                              }`}>
-                                <BookOpen className="h-4 w-4" />
+                              <div className="h-10 w-8 shrink-0">
+                                <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-10 w-8" />
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">

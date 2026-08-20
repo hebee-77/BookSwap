@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -6,13 +6,17 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Edit, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, AlertTriangle, UploadCloud, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { bookService } from '../services/bookService';
 import type { BookCondition } from '../types/book';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { BookCover } from '../components/books/BookCover';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 const bookSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -32,6 +36,10 @@ export const EditBookPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const bookId = Number(id);
 
@@ -75,11 +83,50 @@ export const EditBookPage: React.FC = () => {
 
   const selectedCondition = watch('bookCondition');
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    validateAndSetFile(file);
+  };
+
+  const validateAndSetFile = (file?: File) => {
+    setImageError(null);
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setImageError('Only JPEG, PNG, and WebP images are allowed');
+      toast.error('Invalid image type. Please select a JPG, PNG, or WebP file.');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setImageError('Image size exceeds maximum limit of 5 MB');
+      toast.error('Image is too large. Maximum size is 5 MB.');
+      return;
+    }
+
+    setSelectedFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
+
+  const handleRemoveNewImage = () => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setImageError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const updateMutation = useMutation({
-    mutationFn: (updatedBook: BookFormData) => bookService.updateBook(bookId, updatedBook),
+    mutationFn: (formData: FormData) => bookService.updateBook(bookId, formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] });
       queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+      queryClient.invalidateQueries({ queryKey: ['user-books'] });
       toast.success('Book updated successfully!');
       navigate(`/books/${bookId}`);
     },
@@ -93,7 +140,19 @@ export const EditBookPage: React.FC = () => {
   const onSubmit = (data: BookFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    updateMutation.mutate(data, {
+
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('author', data.author);
+    if (data.isbn) formData.append('isbn', data.isbn);
+    if (data.description) formData.append('description', data.description);
+    formData.append('bookCondition', data.bookCondition);
+
+    if (selectedFile) {
+      formData.append('image', selectedFile);
+    }
+
+    updateMutation.mutate(formData, {
       onSettled: () => setIsSubmitting(false),
     });
   };
@@ -154,6 +213,93 @@ export const EditBookPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {/* Cover Image Upload / Change */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground block">
+                  Book Cover Image
+                </label>
+
+                {previewUrl ? (
+                  <div className="relative flex items-center gap-4 p-3 rounded-xl border border-border bg-muted/20">
+                    <div className="relative h-24 w-18 aspect-[3/4] rounded-lg overflow-hidden border border-border shrink-0 bg-background">
+                      <img
+                        src={previewUrl}
+                        alt="New cover preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">New Image Selected</span>
+                      <p className="text-sm font-bold text-foreground truncate mt-0.5">{selectedFile?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedFile ? (selectedFile.size / (1024 * 1024)).toFixed(2) + ' MB' : ''}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveNewImage}
+                        disabled={isSubmitting}
+                        className="mt-1.5 h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Cancel replacement</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : book?.imageUrl ? (
+                  <div className="flex items-center gap-4 p-3 rounded-xl border border-border bg-muted/10">
+                    <div className="h-24 w-18 shrink-0">
+                      <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="sm" className="h-24 w-18" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-muted-foreground">Current Book Cover</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isSubmitting}
+                        className="mt-2 h-8 text-xs flex items-center gap-1.5"
+                      >
+                        <UploadCloud className="h-3.5 w-3.5" />
+                        <span>Replace Cover Image</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-border hover:border-primary/50 transition-colors rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer bg-muted/10 hover:bg-muted/20 text-center group"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Click to upload a book cover
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports JPG, PNG, WebP (up to 5 MB)
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="edit-book-cover-upload"
+                  aria-label="Upload book cover image"
+                  disabled={isSubmitting}
+                />
+
+                {imageError && (
+                  <p className="text-xs font-semibold text-destructive">{imageError}</p>
+                )}
+              </div>
+
               {/* Title */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground" htmlFor="title">

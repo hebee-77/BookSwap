@@ -10,13 +10,13 @@ import {
   Trash2,
   Edit2,
   ArrowUpDown,
-  BookOpen,
   CheckCircle,
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookCondition } from '../../types/book';
 import { BookPagination } from '../../components/books/BookPagination';
+import { BookCover } from '../../components/books/BookCover';
 
 export const AdminBooksPage: React.FC = () => {
   const { user } = useAuth();
@@ -240,11 +240,15 @@ export const AdminBooksPage: React.FC = () => {
                       return (
                         <tr key={book.id} className="hover:bg-muted/30 transition-colors group">
                           <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="h-4.5 w-4.5 text-primary shrink-0" />
-                              <span className="font-bold text-foreground">{book.title}</span>
+                            <div className="flex items-center gap-3">
+                              <div className="h-12 w-9 shrink-0">
+                                <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-bold text-foreground block truncate">{book.title}</span>
+                                {book.isbn && <span className="text-[10px] text-muted-foreground font-semibold block">ISBN: {book.isbn}</span>}
+                              </div>
                             </div>
-                            {book.isbn && <span className="text-[10px] text-muted-foreground font-semibold ml-6.5 block">ISBN: {book.isbn}</span>}
                           </td>
                           <td className="py-3.5 px-4 text-muted-foreground font-semibold">{book.author}</td>
                           <td className="py-3.5 px-4">
@@ -312,15 +316,18 @@ export const AdminBooksPage: React.FC = () => {
                       key={book.id}
                       className="p-4 rounded-xl border border-border bg-card/65 space-y-3.5"
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="h-14 w-10 shrink-0">
+                            <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-14 w-10" />
+                          </div>
                           <div className="min-w-0">
                             <h3 className="font-bold text-foreground leading-tight truncate">{book.title}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{book.author}</p>
+                            {book.isbn && <span className="text-[10px] text-muted-foreground font-semibold">ISBN: {book.isbn}</span>}
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">
                           Owner #{book.ownerId}
                         </span>
                       </div>

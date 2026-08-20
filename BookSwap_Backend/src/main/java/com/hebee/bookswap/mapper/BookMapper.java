@@ -38,6 +38,7 @@ public class BookMapper {
             response.setOwnerId(book.getOwner().getId());
         }
         response.setCreatedAt(book.getCreatedAt());
+        response.setImageUrl(book.getImageUrl());
         return response;
     }
 }

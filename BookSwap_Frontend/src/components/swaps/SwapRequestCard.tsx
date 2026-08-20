@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { reviewService } from '../../services/reviewService';
 import { ReviewDialog } from '../reviews/ReviewDialog';
 import { Star } from 'lucide-react';
+import { BookCover } from '../books/BookCover';
 
 interface SwapRequestCardProps {
   request: ExchangeRequest;
@@ -179,8 +180,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               </p>
               {requestedBook ? (
                 <div className="flex items-start gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/10">
-                    <BookMarked className="h-4.5 w-4.5" />
+                  <div className="h-12 w-9 shrink-0">
+                    <BookCover imageUrl={requestedBook.imageUrl} title={requestedBook.title} aspect="portrait" size="xs" className="h-12 w-9" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{requestedBook.title}</p>
@@ -209,8 +210,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               </p>
               {offeredBook ? (
                 <div className="flex items-start gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-sky-500/5 text-sky-600 flex items-center justify-center flex-shrink-0 mt-0.5 border border-sky-500/10">
-                    <BookMarked className="h-4.5 w-4.5" />
+                  <div className="h-12 w-9 shrink-0">
+                    <BookCover imageUrl={offeredBook.imageUrl} title={offeredBook.title} aspect="portrait" size="xs" className="h-12 w-9" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{offeredBook.title}</p>
@@ -222,7 +223,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-muted text-muted-foreground/60 flex items-center justify-center flex-shrink-0 mt-0.5 border border-border">
+                  <div className="h-12 w-9 rounded-lg bg-muted text-muted-foreground/60 flex items-center justify-center shrink-0 border border-border">
                     <BookMarked className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0">

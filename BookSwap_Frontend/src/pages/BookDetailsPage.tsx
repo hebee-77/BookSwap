@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Edit, Trash2, Calendar, User, Info, CheckCircle, BookOpen, AlertTriangle, ArrowLeftRight, LogIn } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, User, Info, CheckCircle, AlertTriangle, ArrowLeftRight, LogIn } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { bookService } from '../services/bookService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { SwapRequestDialog } from '../components/swaps/SwapRequestDialog';
+import { BookCover } from '../components/books/BookCover';
 
 export const BookDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -117,10 +118,16 @@ export const BookDetailsPage: React.FC = () => {
       </Link>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {/* Book Left Side Cover Mock */}
-        <div className="md:col-span-1">
-          <div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-border flex flex-col items-center justify-center p-6 shadow-sm">
-            <BookOpen className="h-20 w-20 text-primary/30 mb-4" />
+        {/* Book Left Side Cover */}
+        <div className="md:col-span-1 space-y-3">
+          <BookCover
+            imageUrl={book.imageUrl}
+            title={book.title}
+            aspect="portrait"
+            size="xl"
+            className="w-full rounded-2xl shadow-md border-border/80"
+          />
+          <div className="flex justify-center">
             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${getConditionBadge(book.bookCondition)}`}>
               {book.bookCondition} Condition
             </span>

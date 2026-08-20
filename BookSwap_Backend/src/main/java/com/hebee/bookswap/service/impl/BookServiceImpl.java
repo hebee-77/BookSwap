@@ -32,15 +32,18 @@ public class BookServiceImpl implements BookService {
     private final UserRepository userRepository;
     private final ExchangeRequestRepository exchangeRequestRepository;
     private final BookMapper bookMapper;
+    private final com.hebee.bookswap.service.FileStorageService fileStorageService;
 
     public BookServiceImpl(BookRepository bookRepository,
                            UserRepository userRepository,
                            ExchangeRequestRepository exchangeRequestRepository,
-                           BookMapper bookMapper) {
+                           BookMapper bookMapper,
+                           com.hebee.bookswap.service.FileStorageService fileStorageService) {
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
         this.exchangeRequestRepository = exchangeRequestRepository;
         this.bookMapper = bookMapper;
+        this.fileStorageService = fileStorageService;
     }
 
     private User getAuthenticatedUser() {
@@ -51,8 +54,19 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public BookResponse createBook(BookRequest request) {
+        return createBook(request, null);
+    }
+
+    @Override
+    public BookResponse createBook(BookRequest request, org.springframework.web.multipart.MultipartFile image) {
         User owner = getAuthenticatedUser();
         Book book = bookMapper.toEntity(request, owner);
+
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = fileStorageService.storeFile(image);
+            book.setImageUrl(imageUrl);
+        }
+
         Book savedBook = bookRepository.save(book);
         BookResponse response = bookMapper.toResponse(savedBook);
         response.setAvailable(true);
@@ -78,6 +92,11 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public BookResponse updateBook(Long id, BookRequest request) {
+        return updateBook(id, request, null);
+    }
+
+    @Override
+    public BookResponse updateBook(Long id, BookRequest request, org.springframework.web.multipart.MultipartFile image) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
         User currentUser = getAuthenticatedUser();
@@ -92,7 +111,18 @@ public class BookServiceImpl implements BookService {
         book.setDescription(request.getDescription());
         book.setBookCondition(request.getBookCondition());
 
+        String oldImageUrl = book.getImageUrl();
+        if (image != null && !image.isEmpty()) {
+            String newImageUrl = fileStorageService.storeFile(image);
+            book.setImageUrl(newImageUrl);
+        }
+
         Book updatedBook = bookRepository.save(book);
+
+        if (image != null && !image.isEmpty() && oldImageUrl != null && !oldImageUrl.trim().isEmpty()) {
+            fileStorageService.deleteFile(oldImageUrl);
+        }
+
         BookResponse response = bookMapper.toResponse(updatedBook);
         boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
         response.setAvailable(isAvailable);
@@ -117,12 +147,18 @@ public class BookServiceImpl implements BookService {
             throw new IllegalArgumentException("Cannot delete a book with an accepted exchange request");
         }
 
+        String imageUrl = book.getImageUrl();
+
         List<ExchangeRequest> requests = exchangeRequestRepository.findByBookId(id);
         if (!requests.isEmpty()) {
             exchangeRequestRepository.deleteAll(requests);
         }
 
         bookRepository.delete(book);
+
+        if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+            fileStorageService.deleteFile(imageUrl);
+        }
     }
 
     @Override

@@ -9,6 +9,7 @@ import { ReviewList } from '../components/reviews/ReviewList';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { User, Calendar, BookOpen, Star, AlertCircle, ArrowLeft } from 'lucide-react';
+import { BookCover } from '../components/books/BookCover';
 
 export const PublicUserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -216,8 +217,11 @@ export const PublicUserProfilePage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {books.map((book) => (
                   <Link key={book.id} to={`/books/${book.id}`}>
-                    <Card className="hover:shadow-md transition-shadow border border-border bg-card/50 overflow-hidden cursor-pointer">
-                      <CardContent className="p-4 space-y-2">
+                    <Card className="hover:shadow-md transition-shadow border border-border bg-card/50 overflow-hidden cursor-pointer flex items-center p-3 gap-3">
+                      <div className="h-16 w-12 shrink-0">
+                        <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-16 w-12" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-1">
                         <h4 className="font-extrabold text-foreground text-sm leading-tight truncate">
                           {book.title}
                         </h4>
@@ -235,7 +239,7 @@ export const PublicUserProfilePage: React.FC = () => {
                         }`}>
                           {book.bookCondition}
                         </span>
-                      </CardContent>
+                      </div>
                     </Card>
                   </Link>
                 ))}

@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { LogOut, User as UserIcon, Calendar, BookOpen, Plus, Eye, Edit, ArrowLeftRight } from 'lucide-react';
 import { swapService } from '../services/swapService';
 import { notificationService } from '../services/notificationService';
+import { BookCover } from '../components/books/BookCover';
+
 export const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -235,8 +237,13 @@ export const DashboardPage: React.FC = () => {
                       <tbody className="divide-y divide-border bg-card text-foreground">
                         {userBooks.map((book) => (
                           <tr key={book.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-4 py-3 font-medium line-clamp-1 max-w-[200px]">
-                              {book.title}
+                            <td className="px-4 py-3 font-medium max-w-[240px]">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-10 w-7 shrink-0">
+                                  <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-10 w-7" />
+                                </div>
+                                <span className="truncate">{book.title}</span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">{book.author}</td>
                             <td className="px-4 py-3">

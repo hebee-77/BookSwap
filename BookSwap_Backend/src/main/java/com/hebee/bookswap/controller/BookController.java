@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+
 @RestController
 @RequestMapping("/api/books")
 public class BookController {
@@ -19,8 +22,16 @@ public class BookController {
         this.bookService = bookService;
     }
 
-    @PostMapping
-    public ResponseEntity<BookResponse> createBook(@Valid @RequestBody BookRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BookResponse> createBook(
+            @Valid @ModelAttribute BookRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        BookResponse response = bookService.createBook(request, image);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BookResponse> createBookJson(@Valid @RequestBody BookRequest request) {
         BookResponse response = bookService.createBook(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -41,8 +52,17 @@ public class BookController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BookResponse> updateBook(
+            @PathVariable Long id,
+            @Valid @ModelAttribute BookRequest request,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        BookResponse response = bookService.updateBook(id, request, image);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BookResponse> updateBookJson(
             @PathVariable Long id,
             @Valid @RequestBody BookRequest request) {
         BookResponse response = bookService.updateBook(id, request);

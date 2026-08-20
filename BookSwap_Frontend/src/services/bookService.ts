@@ -22,13 +22,19 @@ export const bookService = {
     return response.data;
   },
 
-  createBook: async (book: BookRequest): Promise<Book> => {
-    const response = await api.post<Book>('/books', book);
+  createBook: async (book: FormData | BookRequest): Promise<Book> => {
+    const isFormData = book instanceof FormData;
+    const response = await api.post<Book>('/books', book, {
+      headers: isFormData ? { 'Content-Type': undefined } : undefined,
+    });
     return response.data;
   },
 
-  updateBook: async (id: number, book: BookRequest): Promise<Book> => {
-    const response = await api.put<Book>(`/books/${id}`, book);
+  updateBook: async (id: number, book: FormData | BookRequest): Promise<Book> => {
+    const isFormData = book instanceof FormData;
+    const response = await api.put<Book>(`/books/${id}`, book, {
+      headers: isFormData ? { 'Content-Type': undefined } : undefined,
+    });
     return response.data;
   },
 

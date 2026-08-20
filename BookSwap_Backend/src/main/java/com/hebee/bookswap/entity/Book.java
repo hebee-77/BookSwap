@@ -116,11 +116,22 @@ public class Book {
         this.createdAt = createdAt;
     }
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     public List<ExchangeRequest> getExchangeRequests() {
         return exchangeRequests;
     }
 
     public void setExchangeRequests(List<ExchangeRequest> exchangeRequests) {
         this.exchangeRequests = exchangeRequests;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }

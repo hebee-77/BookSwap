@@ -9,6 +9,7 @@ import { bookService } from '../services/bookService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { BookCover } from '../components/books/BookCover';
 
 export const MyBooksPage: React.FC = () => {
   const { user } = useAuth();
@@ -225,7 +226,14 @@ export const MyBooksPage: React.FC = () => {
               <tbody className="divide-y divide-border bg-card text-foreground">
                 {filteredBooks.map((book) => (
                   <tr key={book.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 font-bold">{book.title}</td>
+                    <td className="px-6 py-4 font-bold">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-9 shrink-0">
+                          <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                        </div>
+                        <span className="truncate max-w-[200px]">{book.title}</span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-muted-foreground">{book.author}</td>
                     <td className="px-6 py-4 text-muted-foreground">{book.isbn || 'N/A'}</td>
                     <td className="px-6 py-4">
@@ -273,16 +281,21 @@ export const MyBooksPage: React.FC = () => {
           {/* Mobile Grid View */}
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {filteredBooks.map((book) => (
-              <Card key={book.id} className="border border-border bg-card">
-                <CardHeader className="p-4 pb-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-base font-bold text-foreground line-clamp-1">{book.title}</CardTitle>
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${getConditionStyles(book.bookCondition)}`}>
-                      {book.bookCondition}
-                    </span>
+              <Card key={book.id} className="border border-border bg-card overflow-hidden">
+                <div className="flex p-4 pb-2 gap-3">
+                  <div className="h-20 w-14 shrink-0">
+                    <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-20 w-14" />
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium">by {book.author}</p>
-                </CardHeader>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between items-start gap-2">
+                      <CardTitle className="text-base font-bold text-foreground line-clamp-1">{book.title}</CardTitle>
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase shrink-0 ${getConditionStyles(book.bookCondition)}`}>
+                        {book.bookCondition}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5">by {book.author}</p>
+                  </div>
+                </div>
                 <CardContent className="p-4 pt-0 pb-2 text-xs text-muted-foreground">
                   <div className="flex justify-between py-2 border-t border-border mt-2">
                     <span>ISBN: {book.isbn || 'N/A'}</span>

@@ -10,6 +10,7 @@ export interface Book {
   ownerId: number;
   createdAt: string;
   available: boolean;
+  imageUrl?: string | null;
 }
 
 export interface BookRequest {
@@ -18,6 +19,7 @@ export interface BookRequest {
   isbn?: string;
   description?: string;
   bookCondition: BookCondition;
+  imageUrl?: string | null;
 }
 
 export interface BookPageResponse {

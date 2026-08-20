@@ -47,4 +47,11 @@ public class GlobalExceptionHandler {
         errorResponse.put("message", "Invalid email or password");
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSizeExceededException(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("message", "File size exceeds the maximum allowed limit of 5 MB");
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
 }

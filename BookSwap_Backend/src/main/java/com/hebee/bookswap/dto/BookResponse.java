@@ -14,6 +14,7 @@ public class BookResponse {
     private Long ownerId;
     private LocalDateTime createdAt;
     private boolean available;
+    private String imageUrl;
 
     public BookResponse() {
     }
@@ -27,6 +28,18 @@ public class BookResponse {
         this.bookCondition = bookCondition;
         this.ownerId = ownerId;
         this.createdAt = createdAt;
+    }
+
+    public BookResponse(Long id, String title, String author, String isbn, String description, BookCondition bookCondition, Long ownerId, LocalDateTime createdAt, String imageUrl) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.isbn = isbn;
+        this.description = description;
+        this.bookCondition = bookCondition;
+        this.ownerId = ownerId;
+        this.createdAt = createdAt;
+        this.imageUrl = imageUrl;
     }
 
     public Long getId() {
@@ -99,5 +112,13 @@ public class BookResponse {
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
