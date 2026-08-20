@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@SuppressWarnings("null")
 public class LocalFileStorageService implements FileStorageService {
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

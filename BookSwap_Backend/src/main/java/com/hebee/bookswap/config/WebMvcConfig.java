@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Configuration
+@SuppressWarnings("null")
 public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${app.file.upload-dir:uploads/books}")
