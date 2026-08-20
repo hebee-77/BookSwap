@@ -128,7 +128,7 @@ export const Navbar: React.FC = () => {
 
             {isAuthenticated ? (
               <>
-                {user && (user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin')) && (
+                {user && user.roles?.includes('ROLE_ADMIN') && (
                   <Link
                     to="/admin"
                     className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -240,7 +240,7 @@ export const Navbar: React.FC = () => {
 
             {isAuthenticated ? (
               <>
-                {user && (user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin')) && (
+                {user && user.roles?.includes('ROLE_ADMIN') && (
                   <Link
                     to="/admin"
                     onClick={() => setIsMenuOpen(false)}

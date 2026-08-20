@@ -42,7 +42,7 @@ export const UserMenu: React.FC = () => {
       .substring(0, 2);
   };
 
-  const isAdmin = user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin');
+  const isAdmin = user.roles?.includes('ROLE_ADMIN');
 
   const menuItems = [
     ...(isAdmin ? [{ label: 'Admin Dashboard', path: '/admin', icon: <Shield className="h-4 w-4" /> }] : []),

@@ -25,7 +25,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const isAdmin = user.email === 'admin@example.com' || user.email.toLowerCase().includes('admin');
+  const isAdmin = user.roles?.includes('ROLE_ADMIN');
 
   if (!isAdmin) {
     // Redirect standard user to user dashboard

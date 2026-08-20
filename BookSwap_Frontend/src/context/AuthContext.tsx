@@ -16,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper to decode JWT payload locally without external libraries
-const decodeToken = (token: string): { sub: string; exp: number } | null => {
+const decodeToken = (token: string): { sub: string; exp: number; roles?: string[] } | null => {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -67,7 +67,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const currentUser = users.find((u) => u.email === decoded.sub);
       
       if (currentUser) {
-        setUser(currentUser);
+        setUser({
+          ...currentUser,
+          roles: decoded.roles || [],
+        });
       } else {
         throw new Error('User not found in user list');
       }
