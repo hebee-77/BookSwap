@@ -24,6 +24,7 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminBooksPage } from './pages/admin/AdminBooksPage';
 import { AdminExchangesPage } from './pages/admin/AdminExchangesPage';
+import { ChatPage } from './pages/ChatPage';
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
@@ -104,6 +105,22 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <PublicUserProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="chat/:conversationId"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
               </ProtectedRoute>
             }
           />

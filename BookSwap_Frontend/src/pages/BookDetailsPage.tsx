@@ -3,9 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Edit, Trash2, Calendar, User, Info, CheckCircle, AlertTriangle, ArrowLeftRight, LogIn } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, User, Info, CheckCircle, AlertTriangle, ArrowLeftRight, LogIn, MessageSquare } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { bookService } from '../services/bookService';
+import { chatService } from '../services/chatService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { SwapRequestDialog } from '../components/swaps/SwapRequestDialog';
@@ -211,19 +212,38 @@ export const BookDetailsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Non-Owner Swap Propose Action Button */}
-          {!isOwner && book.available && (
-            <div className="flex gap-3 border-t border-border pt-6 mt-4">
+          {/* Non-Owner Swap Propose & Message Action Button */}
+          {!isOwner && (
+            <div className="flex flex-wrap gap-3 border-t border-border pt-6 mt-4">
               {isAuthenticated ? (
-                <Button onClick={() => setIsSwapOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm">
-                  <ArrowLeftRight className="h-4 w-4" />
-                  <span>Request Swap</span>
-                </Button>
+                <>
+                  {book.available && (
+                    <Button onClick={() => setIsSwapOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm">
+                      <ArrowLeftRight className="h-4 w-4" />
+                      <span>Request Swap</span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const conv = await chatService.createOrGetConversation({ userId: book.ownerId });
+                        navigate(`/chat/${conv.id}`);
+                      } catch (err: any) {
+                        toast.error(err.response?.data?.message || 'Failed to start chat with owner');
+                      }
+                    }}
+                    className="flex items-center gap-2 font-semibold border-border/80 hover:bg-muted"
+                  >
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <span>Message Owner</span>
+                  </Button>
+                </>
               ) : (
                 <Link to="/login">
                   <Button className="flex items-center gap-2 font-semibold">
                     <LogIn className="h-4 w-4" />
-                    <span>Login to Swap</span>
+                    <span>Login to Swap or Chat</span>
                   </Button>
                 </Link>
               )}

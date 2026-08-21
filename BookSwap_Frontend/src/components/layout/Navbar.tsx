@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bookService } from '../../services/bookService';
 import { swapService } from '../../services/swapService';
+import { chatService } from '../../services/chatService';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import { UserMenu } from '../profile/UserMenu';
 import { notificationService } from '../../services/notificationService';
@@ -43,6 +44,14 @@ export const Navbar: React.FC = () => {
     enabled: isAuthenticated && !!user?.id,
   });
 
+  const { data: unreadChatData } = useQuery({
+    queryKey: ['unread-messages-count'],
+    queryFn: () => chatService.getUnreadCount(),
+    enabled: isAuthenticated && !!user?.id,
+    refetchInterval: 15000,
+  });
+
+  const unreadChatCount = unreadChatData?.count || 0;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkRead = (id: number) => {
@@ -121,6 +130,22 @@ export const Navbar: React.FC = () => {
                 {pendingReceivedCount > 0 && (
                   <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold h-4.5 px-1.5 leading-none shadow-sm">
                     {pendingReceivedCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {isAuthenticated && (
+              <Link
+                to="/chat"
+                className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1.5 ${
+                  location.pathname.startsWith('/chat') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <span>Messages</span>
+                {unreadChatCount > 0 && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold h-4.5 px-1.5 leading-none shadow-sm">
+                    {unreadChatCount}
                   </span>
                 )}
               </Link>
@@ -233,6 +258,23 @@ export const Navbar: React.FC = () => {
                 {pendingReceivedCount > 0 && (
                   <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold h-5 px-2 leading-none shadow-sm">
                     {pendingReceivedCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {isAuthenticated && (
+              <Link
+                to="/chat"
+                onClick={() => setIsMenuOpen(false)}
+                className={`flex items-center justify-between rounded-md px-3 py-2 text-base font-medium ${
+                  location.pathname.startsWith('/chat') ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <span>Messages</span>
+                {unreadChatCount > 0 && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold h-5 px-2 leading-none shadow-sm">
+                    {unreadChatCount}
                   </span>
                 )}
               </Link>

@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { BookMarked, ArrowLeftRight, User, Calendar, Check, X, AlertTriangle } from 'lucide-react';
+import { BookMarked, ArrowLeftRight, User, Calendar, Check, X, AlertTriangle, MessageSquare, Star } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
 import { swapService } from '../../services/swapService';
+import { chatService } from '../../services/chatService';
 import type { ExchangeRequest } from '../../types/swap';
 import { SwapStatusBadge } from './SwapStatusBadge';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { reviewService } from '../../services/reviewService';
 import { ReviewDialog } from '../reviews/ReviewDialog';
-import { Star } from 'lucide-react';
 import { BookCover } from '../books/BookCover';
 
 interface SwapRequestCardProps {
@@ -21,6 +22,7 @@ interface SwapRequestCardProps {
 
 export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState<'accept' | 'reject' | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -249,28 +251,56 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
           </div>
 
           {/* Action triggers */}
-          {isIncoming && isPending && !showConfirm && (
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => setShowConfirm('accept')} className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm">
-                <Check className="h-3.5 w-3.5" />
-                <span>Accept</span>
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => setShowConfirm('reject')} className="flex items-center gap-1 h-8 px-3 font-semibold shadow-sm">
-                <X className="h-3.5 w-3.5" />
-                <span>Reject</span>
-              </Button>
-            </div>
-          )}
-          {canReview && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Open Chat button */}
             <Button
               size="sm"
-              onClick={() => setIsReviewOpen(true)}
-              className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm animate-in fade-in"
+              variant="outline"
+              onClick={async () => {
+                const targetUserId = isOutgoing ? requestedBook?.ownerId : request.requesterId;
+                if (!targetUserId) {
+                  toast.error('Partner information unavailable');
+                  return;
+                }
+                try {
+                  const conv = await chatService.createOrGetConversation({
+                    userId: targetUserId,
+                    exchangeRequestId: request.id,
+                  });
+                  navigate(`/chat/${conv.id}`);
+                } catch (err: any) {
+                  toast.error(err.response?.data?.message || 'Failed to start chat');
+                }
+              }}
+              className="flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold border-border/80 hover:bg-muted"
             >
-              <Star className="h-3.5 w-3.5 fill-current" />
-              <span>Leave Review</span>
+              <MessageSquare className="h-3.5 w-3.5 text-primary" />
+              <span>Chat</span>
             </Button>
-          )}
+
+            {isIncoming && isPending && !showConfirm && (
+              <>
+                <Button size="sm" onClick={() => setShowConfirm('accept')} className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm">
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Accept</span>
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => setShowConfirm('reject')} className="flex items-center gap-1 h-8 px-3 font-semibold shadow-sm">
+                  <X className="h-3.5 w-3.5" />
+                  <span>Reject</span>
+                </Button>
+              </>
+            )}
+            {canReview && (
+              <Button
+                size="sm"
+                onClick={() => setIsReviewOpen(true)}
+                className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm animate-in fade-in"
+              >
+                <Star className="h-3.5 w-3.5 fill-current" />
+                <span>Leave Review</span>
+              </Button>
+            )}
+          </div>
         </CardFooter>
 
         {/* Confirmation Overlays inside the card itself for speed and clean UX */}

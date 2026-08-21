@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
 import { reviewService } from '../services/reviewService';
 import { bookService } from '../services/bookService';
+import { chatService } from '../services/chatService';
+import { toast } from 'sonner';
 import { RatingStars } from '../components/reviews/RatingStars';
 import { ReviewList } from '../components/reviews/ReviewList';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { User, Calendar, BookOpen, Star, AlertCircle, ArrowLeft } from 'lucide-react';
+import { User, Calendar, BookOpen, Star, AlertCircle, ArrowLeft, MessageSquare } from 'lucide-react';
 import { BookCover } from '../components/books/BookCover';
 
 export const PublicUserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const userId = Number(id);
+  const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'reviews' | 'books'>('reviews');
 
   // Query 1: User Profile
@@ -113,8 +118,27 @@ export const PublicUserProfilePage: React.FC = () => {
         <div className="h-16 w-16 bg-primary/10 text-primary border border-primary/20 rounded-full flex items-center justify-center font-extrabold text-2xl select-none uppercase shrink-0">
           {profile.name.charAt(0)}
         </div>
-        <div className="text-center sm:text-left space-y-1">
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{profile.name}</h1>
+        <div className="flex-1 text-center sm:text-left space-y-1">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{profile.name}</h1>
+            {currentUser && currentUser.id !== profile.id && (
+              <Button
+                onClick={async () => {
+                  try {
+                    const conv = await chatService.createOrGetConversation({ userId: profile.id });
+                    navigate(`/chat/${conv.id}`);
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.message || 'Failed to start chat with member');
+                  }
+                }}
+                size="sm"
+                className="gap-2 font-semibold rounded-xl bg-primary text-primary-foreground shadow-xs self-center sm:self-auto"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Message Member</span>
+              </Button>
+            )}
+          </div>
           <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-xs text-muted-foreground font-semibold">
             <div className="flex items-center gap-1.5">
               <User className="h-4 w-4 text-primary" />
