@@ -220,12 +220,12 @@ export const ChatPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8 py-4 h-[calc(100vh-5rem)]">
-      <div className="h-full rounded-2xl border border-border bg-card shadow-lg overflow-hidden flex flex-col md:flex-row">
+    <div className="w-full h-full p-2 sm:p-4 lg:p-6 flex flex-col min-h-0 overflow-hidden max-w-7xl mx-auto">
+      <div className="h-full w-full rounded-2xl border border-border bg-card shadow-sm overflow-hidden flex flex-col md:flex-row min-h-0">
         {/* Left Column: Conversation Sidebar */}
         <div
-          className={`w-full md:w-80 lg:w-96 h-full shrink-0 ${
-            activeId ? 'hidden md:block' : 'block'
+          className={`w-full md:w-80 lg:w-96 h-full shrink-0 flex flex-col min-h-0 overflow-hidden ${
+            activeId ? 'hidden md:flex' : 'flex'
           }`}
         >
           <ConversationList
@@ -238,7 +238,7 @@ export const ChatPage: React.FC = () => {
 
         {/* Right Column: Chat Room Window or Empty State */}
         {activeId && activeConversation ? (
-          <div className="flex-1 flex flex-col h-full bg-background overflow-hidden">
+          <div className="flex-1 flex flex-col h-full bg-background overflow-hidden min-h-0">
             {/* 1. Header */}
             <ChatHeader
               participant={activeConversation.participant}
@@ -259,7 +259,7 @@ export const ChatPage: React.FC = () => {
               />
             )}
 
-            {/* 3. Messages Stream */}
+            {/* 3. Messages Stream (Only this scrolls) */}
             <MessageList
               messages={messages}
               currentUserId={user?.id || 0}

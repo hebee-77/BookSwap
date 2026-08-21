@@ -56,7 +56,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
         {isLoading ? (
           <div className="space-y-2 p-2">
             {[1, 2, 3, 4].map((i) => (
