@@ -60,8 +60,12 @@ export const ChatPage: React.FC = () => {
       setCurrentPage(0);
       setHasMore(!data.last);
       // Mark conversation as read on load
-      chatService.markAsRead(activeId);
-      chatSocket.sendRead(activeId);
+      try {
+        await chatService.markAsRead(activeId);
+        chatSocket.sendRead(activeId);
+      } catch (e) {
+        console.error('Failed to mark conversation as read:', e);
+      }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
       return data;
@@ -94,11 +98,7 @@ export const ChatPage: React.FC = () => {
     }
 
     // Message handler
-    const unsubMsg = chatSocket.subscribeMessage((newMsg: Message) => {
-      // Invalidate conversations list so sidebar updates latest message & unread badge
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
-
+    const unsubMsg = chatSocket.subscribeMessage(async (newMsg: Message) => {
       // If message is for currently open conversation
       if (activeId && newMsg.conversationId === activeId) {
         setMessages((prev) => {
@@ -109,11 +109,21 @@ export const ChatPage: React.FC = () => {
           return [...prev, newMsg];
         });
 
-        // Mark as read if received from partner while chat is active
+        // Mark as read immediately if received while in this chat
         if (newMsg.sender?.id !== user?.id) {
-          chatService.markAsRead(activeId);
-          chatSocket.sendRead(activeId);
+          try {
+            await chatService.markAsRead(activeId);
+            chatSocket.sendRead(activeId);
+          } catch (e) {
+            console.error('Failed to mark active conversation as read:', e);
+          }
         }
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+      } else {
+        // Message is for another conversation
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
       }
     });
 
