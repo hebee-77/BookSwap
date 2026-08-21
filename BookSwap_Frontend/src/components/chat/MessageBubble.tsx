@@ -71,7 +71,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className={`group relative flex my-1.5 ${isSelf ? 'justify-end' : 'justify-start'}`}
+      className={`group relative flex items-end gap-1.5 my-1.5 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
@@ -155,31 +155,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       </div>
 
-      {/* Floating Action Menu on Hover */}
+      {/* Floating Action Menu on Hover (Beside Bubble) */}
       <div
-        className={`absolute top-0 -translate-y-1/2 flex items-center gap-1 rounded-full bg-background/95 border border-border shadow-md px-1.5 py-0.5 z-10 transition-opacity duration-150 ${
-          showActions ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        } ${isSelf ? 'right-2' : 'left-2'}`}
+        className={`flex items-center gap-0.5 self-center rounded-full bg-card/95 backdrop-blur-xs border border-border shadow-md px-1 py-0.5 transition-all duration-150 shrink-0 ${
+          showActions ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+        }`}
       >
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
           onClick={() => onReply(message)}
           title="Reply"
         >
-          <Reply className="h-3 w-3" />
+          <Reply className="h-3.5 w-3.5" />
         </Button>
 
         {message.content && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+            className="h-7 w-7 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
             onClick={handleCopy}
             title="Copy Text"
           >
-            <Copy className="h-3 w-3" />
+            <Copy className="h-3.5 w-3.5" />
           </Button>
         )}
 
@@ -187,11 +187,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
             onClick={() => onDelete(message.id)}
             title="Delete Message"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
