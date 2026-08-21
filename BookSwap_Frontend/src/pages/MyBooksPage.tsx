@@ -228,8 +228,8 @@ export const MyBooksPage: React.FC = () => {
                   <tr key={book.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4 font-bold">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-9 shrink-0">
-                          <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                        <div className="h-12 w-9 shrink-0 rounded-md border border-border/70 overflow-hidden shadow-xs">
+                          <BookCover imageUrl={book.imageUrl} title={book.title} aspect="fill" fit="cover" size="xs" />
                         </div>
                         <span className="truncate max-w-[200px]">{book.title}</span>
                       </div>
@@ -281,10 +281,10 @@ export const MyBooksPage: React.FC = () => {
           {/* Mobile Grid View */}
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {filteredBooks.map((book) => (
-              <Card key={book.id} className="border border-border bg-card overflow-hidden">
+              <Card key={book.id} className="border border-border bg-card overflow-hidden py-0 gap-0">
                 <div className="flex p-4 pb-2 gap-3">
-                  <div className="h-20 w-14 shrink-0">
-                    <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-20 w-14" />
+                  <div className="h-20 w-14 shrink-0 rounded-md border border-border/70 overflow-hidden shadow-xs">
+                    <BookCover imageUrl={book.imageUrl} title={book.title} aspect="fill" fit="cover" size="sm" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex justify-between items-start gap-2">

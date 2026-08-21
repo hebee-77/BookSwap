@@ -241,8 +241,8 @@ export const AdminBooksPage: React.FC = () => {
                         <tr key={book.id} className="hover:bg-muted/30 transition-colors group">
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-12 w-9 shrink-0">
-                                <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                              <div className="h-12 w-9 shrink-0 rounded-md border border-border/70 overflow-hidden shadow-xs">
+                                <BookCover imageUrl={book.imageUrl} title={book.title} aspect="fill" fit="cover" size="xs" />
                               </div>
                               <div className="min-w-0">
                                 <span className="font-bold text-foreground block truncate">{book.title}</span>
@@ -318,8 +318,8 @@ export const AdminBooksPage: React.FC = () => {
                     >
                       <div className="flex justify-between items-start gap-3">
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className="h-14 w-10 shrink-0">
-                            <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-14 w-10" />
+                          <div className="h-14 w-10 shrink-0 rounded-md border border-border/70 overflow-hidden shadow-xs">
+                            <BookCover imageUrl={book.imageUrl} title={book.title} aspect="fill" fit="cover" size="xs" />
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-bold text-foreground leading-tight truncate">{book.title}</h3>

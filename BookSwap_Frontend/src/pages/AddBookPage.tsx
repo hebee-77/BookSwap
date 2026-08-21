@@ -168,7 +168,7 @@ export const AddBookPage: React.FC = () => {
                       <img
                         src={previewUrl}
                         alt="Book cover preview"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                     <div className="flex-1 min-w-0">

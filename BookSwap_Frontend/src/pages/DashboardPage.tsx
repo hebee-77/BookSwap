@@ -238,9 +238,9 @@ export const DashboardPage: React.FC = () => {
                         {userBooks.map((book) => (
                           <tr key={book.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3 font-medium max-w-[240px]">
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-10 w-7 shrink-0">
-                                  <BookCover imageUrl={book.imageUrl} title={book.title} aspect="portrait" size="xs" className="h-10 w-7" />
+                              <div className="flex items-center gap-3">
+                                <div className="h-11 w-8 shrink-0 rounded border border-border/70 overflow-hidden shadow-xs">
+                                  <BookCover imageUrl={book.imageUrl} title={book.title} aspect="fill" fit="cover" size="xs" />
                                 </div>
                                 <span className="truncate">{book.title}</span>
                               </div>

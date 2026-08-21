@@ -46,19 +46,20 @@ export const BookCard: React.FC<BookCardProps> = ({ book }) => {
       className="h-full cursor-pointer flex flex-col group"
       onClick={handleCardClick}
     >
-      <Card className="flex flex-col h-full border border-border bg-card overflow-hidden hover:shadow-md transition-all duration-200">
-        {/* Book Cover */}
-        <div className="w-full border-b border-border">
+      <Card className="flex flex-col h-full border border-border bg-card overflow-hidden hover:shadow-md transition-all duration-200 py-0 pt-0 gap-0">
+        {/* Book Cover Banner */}
+        <div className="w-full border-b border-border/80 overflow-hidden">
           <BookCover
             imageUrl={book.imageUrl}
             title={book.title}
             aspect="wide"
+            fit="contain"
             size="lg"
-            className="rounded-none border-none aspect-[16/10]"
+            className="w-full rounded-none"
           />
         </div>
 
-        <CardHeader className="p-5 pb-2">
+        <CardHeader className="p-5 pt-4 pb-2">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-base font-bold text-foreground leading-tight line-clamp-1">
               {book.title}

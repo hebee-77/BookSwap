@@ -124,8 +124,9 @@ export const BookDetailsPage: React.FC = () => {
             imageUrl={book.imageUrl}
             title={book.title}
             aspect="portrait"
+            fit="contain"
             size="xl"
-            className="w-full rounded-2xl shadow-md border-border/80"
+            className="w-full rounded-2xl shadow-md border border-border/80 overflow-hidden"
           />
           <div className="flex justify-center">
             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${getConditionBadge(book.bookCondition)}`}>
