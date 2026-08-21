@@ -26,7 +26,9 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname && !location.state.from.pathname.startsWith('/chat')
+    ? location.state.from.pathname
+    : '/';
   
   // Show notification if user was redirected due to session expiration
   useEffect(() => {
@@ -38,12 +40,12 @@ export const LoginPage: React.FC = () => {
     }
   }, [location, navigate]);
 
-  // If already authenticated, redirect
+  // If already authenticated, redirect to home
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate]);
 
   const {
     register,
