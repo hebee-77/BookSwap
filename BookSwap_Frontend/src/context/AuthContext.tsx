@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types/auth';
 import { authService } from '../services/authService';
+import { chatSocket } from '../services/websocket/chatSocket';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   const logout = () => {
+    chatSocket.disconnect();
     authService.removeToken();
     setToken(null);
     setUser(null);
@@ -71,6 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           ...currentUser,
           roles: decoded.roles || [],
         });
+        chatSocket.connect(authToken);
       } else {
         throw new Error('User not found in user list');
       }

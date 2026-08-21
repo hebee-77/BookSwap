@@ -26,21 +26,30 @@ class ChatSocketService {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
+    const hostname = window.location.hostname;
+    // Connect directly to backend port 8080 if on dev server 5173, or host /ws in production
+    const wsEndpoint =
+      window.location.port === '5173'
+        ? `${protocol}//${hostname}:8080/ws`
+        : `${protocol}//${window.location.host}/ws`;
+
+    const wsUrl = `${wsEndpoint}?token=${encodeURIComponent(token)}`;
 
     this.client = new Client({
       brokerURL: wsUrl,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
+        authorization: `Bearer ${token}`,
+        token: token,
       },
-      reconnectDelay: 5000,
+      reconnectDelay: 3000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
-      debug: () => {
-        // quiet in production
+      debug: (msg) => {
+        console.debug('[STOMP Debug]', msg);
       },
       onConnect: () => {
+        console.log('[STOMP] Successfully connected and authenticated with WebSocket broker');
         this.isConnected = true;
         this.notifyStatus(true);
 

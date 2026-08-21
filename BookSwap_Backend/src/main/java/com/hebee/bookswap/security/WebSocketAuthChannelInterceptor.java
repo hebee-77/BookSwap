@@ -31,10 +31,17 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        if (accessor == null) {
+            accessor = StompHeaderAccessor.wrap(message);
+        }
 
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            List<String> authHeaders = accessor.getNativeHeader("Authorization");
+        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String token = null;
+
+            List<String> authHeaders = accessor.getNativeHeader("Authorization");
+            if (authHeaders == null || authHeaders.isEmpty()) {
+                authHeaders = accessor.getNativeHeader("authorization");
+            }
 
             if (authHeaders != null && !authHeaders.isEmpty()) {
                 String header = authHeaders.get(0);
@@ -47,6 +54,9 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
             if (token == null) {
                 List<String> tokenHeaders = accessor.getNativeHeader("token");
+                if (tokenHeaders == null || tokenHeaders.isEmpty()) {
+                    tokenHeaders = accessor.getNativeHeader("Token");
+                }
                 if (tokenHeaders != null && !tokenHeaders.isEmpty()) {
                     token = tokenHeaders.get(0);
                 }
@@ -63,14 +73,14 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                             accessor.setUser(authentication);
                             log.info("WebSocket user authenticated: {}", username);
                         } else {
-                            log.warn("Invalid JWT token during WebSocket handshake");
+                            log.warn("Invalid JWT token during WebSocket STOMP connect");
                         }
                     }
                 } catch (Exception e) {
                     log.error("WebSocket authentication error: {}", e.getMessage());
                 }
             } else {
-                log.warn("WebSocket CONNECT attempted without Authorization token");
+                log.warn("WebSocket CONNECT attempted without Authorization header");
             }
         }
 

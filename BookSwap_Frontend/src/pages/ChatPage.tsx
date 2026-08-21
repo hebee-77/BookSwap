@@ -165,13 +165,13 @@ export const ChatPage: React.FC = () => {
       if (!activeId) return;
 
       try {
-        // First try WebSocket real-time delivery
-        const sentViaWs = chatSocket.sendMessage(req);
-        if (!sentViaWs) {
-          // Fallback to REST API if socket not ready
-          const res = await chatService.sendMessage(activeId, req);
-          setMessages((prev) => [...prev, res]);
-        }
+        const res = await chatService.sendMessage(activeId, req);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === res.id)) {
+            return prev;
+          }
+          return [...prev, res];
+        });
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
       } catch (err: any) {
         toast.error(err.response?.data?.message || 'Failed to send message');
