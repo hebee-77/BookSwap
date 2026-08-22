@@ -11,12 +11,18 @@ import org.springframework.stereotype.Component;
 public class ExchangeRequestMapper {
 
     public ExchangeRequest toEntity(ExchangeRequestCreate request, User requester, Book book) {
+        return toEntity(request, requester, book != null ? book.getOwner() : null, book, null);
+    }
+
+    public ExchangeRequest toEntity(ExchangeRequestCreate request, User requester, User owner, Book book, Book offeredBook) {
         if (request == null) {
             return null;
         }
         ExchangeRequest exchangeRequest = new ExchangeRequest();
         exchangeRequest.setRequester(requester);
+        exchangeRequest.setOwner(owner != null ? owner : (book != null ? book.getOwner() : null));
         exchangeRequest.setBook(book);
+        exchangeRequest.setOfferedBook(offeredBook);
         return exchangeRequest;
     }
 
@@ -29,8 +35,16 @@ public class ExchangeRequestMapper {
         if (exchangeRequest.getRequester() != null) {
             response.setRequesterId(exchangeRequest.getRequester().getId());
         }
+        if (exchangeRequest.getOwner() != null) {
+            response.setOwnerId(exchangeRequest.getOwner().getId());
+        } else if (exchangeRequest.getBook() != null && exchangeRequest.getBook().getOwner() != null) {
+            response.setOwnerId(exchangeRequest.getBook().getOwner().getId());
+        }
         if (exchangeRequest.getBook() != null) {
             response.setBookId(exchangeRequest.getBook().getId());
+        }
+        if (exchangeRequest.getOfferedBook() != null) {
+            response.setOfferedBookId(exchangeRequest.getOfferedBook().getId());
         }
         response.setStatus(exchangeRequest.getStatus());
         response.setCreatedAt(exchangeRequest.getCreatedAt());

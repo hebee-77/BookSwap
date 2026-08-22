@@ -37,9 +37,9 @@ export const SwapRequestsPage: React.FC = () => {
   const userBooks = userBooksData?.content || [];
   const userBookIds = new Set(userBooks.map((b) => b.id));
 
-  // Incoming requests: requests where book belongs to current user's library
+  // Incoming requests: requests where book belongs to current user's library or ownerId matches
   const receivedRequests = allRequests.filter(
-    (req) => userBookIds.has(req.bookId) && req.requesterId !== user?.id
+    (req) => (req.ownerId === user?.id || userBookIds.has(req.bookId)) && req.requesterId !== user?.id
   );
 
   // Split into pending and history
@@ -47,10 +47,13 @@ export const SwapRequestsPage: React.FC = () => {
   const pendingSent = sentRequests.filter((req) => req.status === 'PENDING');
 
   // History: any swap involving user that is accepted/rejected
-  const historyRequests = [
-    ...receivedRequests.filter((req) => req.status !== 'PENDING'),
-    ...sentRequests.filter((req) => req.status !== 'PENDING'),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const historyRequests = allRequests
+    .filter(
+      (req) =>
+        req.status !== 'PENDING' &&
+        (req.requesterId === user?.id || req.ownerId === user?.id || userBookIds.has(req.bookId))
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const isLoading = isLoadingAll || isLoadingSent || isLoadingUserBooks;
 

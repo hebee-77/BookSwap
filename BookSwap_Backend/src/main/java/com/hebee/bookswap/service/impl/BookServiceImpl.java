@@ -78,7 +78,8 @@ public class BookServiceImpl implements BookService {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
         BookResponse response = bookMapper.toResponse(book);
-        boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
+        boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED)
+                && !exchangeRequestRepository.existsByOfferedBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
         response.setAvailable(isAvailable);
         return response;
     }
@@ -124,7 +125,8 @@ public class BookServiceImpl implements BookService {
         }
 
         BookResponse response = bookMapper.toResponse(updatedBook);
-        boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
+        boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED)
+                && !exchangeRequestRepository.existsByOfferedBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
         response.setAvailable(isAvailable);
         return response;
     }
@@ -142,7 +144,8 @@ public class BookServiceImpl implements BookService {
             throw new AccessDeniedException("Access denied");
         }
 
-        boolean hasAccepted = exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
+        boolean hasAccepted = exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED)
+                || exchangeRequestRepository.existsByOfferedBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
         if (hasAccepted) {
             throw new IllegalArgumentException("Cannot delete a book with an accepted exchange request");
         }
@@ -152,6 +155,11 @@ public class BookServiceImpl implements BookService {
         List<ExchangeRequest> requests = exchangeRequestRepository.findByBookId(id);
         if (!requests.isEmpty()) {
             exchangeRequestRepository.deleteAll(requests);
+        }
+
+        List<ExchangeRequest> offeredRequests = exchangeRequestRepository.findByOfferedBookId(id);
+        if (!offeredRequests.isEmpty()) {
+            exchangeRequestRepository.deleteAll(offeredRequests);
         }
 
         bookRepository.delete(book);
@@ -220,7 +228,8 @@ public class BookServiceImpl implements BookService {
         List<BookResponse> content = bookPage.getContent().stream()
                 .map(book -> {
                     BookResponse response = bookMapper.toResponse(book);
-                    boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(book.getId(), ExchangeRequestStatus.ACCEPTED);
+                    boolean isAvailable = !exchangeRequestRepository.existsByBookIdAndStatus(book.getId(), ExchangeRequestStatus.ACCEPTED)
+                            && !exchangeRequestRepository.existsByOfferedBookIdAndStatus(book.getId(), ExchangeRequestStatus.ACCEPTED);
                     response.setAvailable(isAvailable);
                     return response;
                 })

@@ -92,6 +92,11 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
 
             <h4 className="text-sm font-bold text-foreground truncate mt-0.5">
               {exchange.bookTitle}
+              {exchange.offeredBookTitle && (
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  ↔ offered: <span className="font-semibold text-foreground">{exchange.offeredBookTitle}</span>
+                </span>
+              )}
             </h4>
             <p className="text-xs text-muted-foreground truncate">
               by {exchange.bookAuthor} • Condition: {exchange.bookCondition || 'Good'}

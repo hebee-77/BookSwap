@@ -162,8 +162,18 @@ export const AdminExchangesPage: React.FC = () => {
     enabled: !!selectedRequest?.bookId,
   });
 
+  const { data: selectedOfferedBook } = useQuery({
+    queryKey: ['book', selectedRequest?.offeredBookId],
+    queryFn: () => bookService.getBookById(selectedRequest.offeredBookId),
+    enabled: !!selectedRequest?.offeredBookId,
+  });
+
   const selectedRequester = selectedRequest ? userMap.get(selectedRequest.requesterId) : null;
-  const selectedOwner = selectedBook ? userMap.get(selectedBook.ownerId) : null;
+  const selectedOwner = selectedRequest?.ownerId
+    ? userMap.get(selectedRequest.ownerId)
+    : selectedBook
+    ? userMap.get(selectedBook.ownerId)
+    : null;
 
   // Filter exchanges
   const filteredExchanges = exchanges.filter(
@@ -408,6 +418,32 @@ export const AdminExchangesPage: React.FC = () => {
                     <p className="text-xs font-semibold text-destructive">Book details unavailable (deleted from catalog).</p>
                   )}
                 </div>
+
+                {/* Offered Book Details if available */}
+                {selectedOfferedBook && (
+                  <div className="p-4 bg-sky-500/5 border border-sky-500/10 rounded-xl space-y-3">
+                    <div className="flex items-center gap-1.5 text-sky-600">
+                      <BookOpen className="h-4.5 w-4.5" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">Offered Book</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      <div>
+                        <h4 className="font-extrabold text-foreground text-sm">{selectedOfferedBook.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">by {selectedOfferedBook.author}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${getConditionStyles(selectedOfferedBook.bookCondition)}`}>
+                          {selectedOfferedBook.bookCondition}
+                        </span>
+                        {selectedOfferedBook.isbn && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-border text-[9px] font-bold text-muted-foreground">
+                            ISBN: {selectedOfferedBook.isbn}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Date Created */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold justify-center py-1">

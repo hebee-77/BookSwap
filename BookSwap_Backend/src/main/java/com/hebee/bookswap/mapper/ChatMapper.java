@@ -31,11 +31,22 @@ public class ChatMapper {
             dto.setBookAuthor(exchangeRequest.getBook().getAuthor());
             dto.setBookImageUrl(exchangeRequest.getBook().getImageUrl());
             dto.setBookCondition(exchangeRequest.getBook().getBookCondition());
+        }
 
-            if (exchangeRequest.getBook().getOwner() != null) {
-                dto.setOwnerId(exchangeRequest.getBook().getOwner().getId());
-                dto.setOwnerName(exchangeRequest.getBook().getOwner().getName());
-            }
+        if (exchangeRequest.getOfferedBook() != null) {
+            dto.setOfferedBookId(exchangeRequest.getOfferedBook().getId());
+            dto.setOfferedBookTitle(exchangeRequest.getOfferedBook().getTitle());
+            dto.setOfferedBookAuthor(exchangeRequest.getOfferedBook().getAuthor());
+            dto.setOfferedBookImageUrl(exchangeRequest.getOfferedBook().getImageUrl());
+            dto.setOfferedBookCondition(exchangeRequest.getOfferedBook().getBookCondition());
+        }
+
+        if (exchangeRequest.getOwner() != null) {
+            dto.setOwnerId(exchangeRequest.getOwner().getId());
+            dto.setOwnerName(exchangeRequest.getOwner().getName());
+        } else if (exchangeRequest.getBook() != null && exchangeRequest.getBook().getOwner() != null) {
+            dto.setOwnerId(exchangeRequest.getBook().getOwner().getId());
+            dto.setOwnerName(exchangeRequest.getBook().getOwner().getName());
         }
 
         if (exchangeRequest.getRequester() != null) {

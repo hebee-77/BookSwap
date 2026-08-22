@@ -39,7 +39,11 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({ isOpen, on
   const eligibleBooks = userBooks.filter((book) => book.available);
 
   const createMutation = useMutation({
-    mutationFn: () => swapService.createRequest({ bookId: requestedBook.id }),
+    mutationFn: () =>
+      swapService.createRequest({
+        bookId: requestedBook.id,
+        offeredBookId: selectedBookId,
+      }),
     onSuccess: () => {
       // Invalidate both books lists and swap requests
       queryClient.invalidateQueries({ queryKey: ['books'] });
@@ -47,17 +51,6 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({ isOpen, on
       queryClient.invalidateQueries({ queryKey: ['sent-swaps'] });
       queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      
-      // Save the offered book selection in localStorage for client-side pairing display
-      // We store targetBookId -> offeredBookId
-      try {
-        const storedOffers = localStorage.getItem('swap_offers_mapping') || '{}';
-        const mapping = JSON.parse(storedOffers);
-        mapping[requestedBook.id] = selectedBookId;
-        localStorage.setItem('swap_offers_mapping', JSON.stringify(mapping));
-      } catch (e) {
-        console.error('Error saving offered book mapping:', e);
-      }
 
       toast.success('Swap request sent successfully!');
       onClose();

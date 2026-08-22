@@ -50,7 +50,7 @@ public class ReviewServiceImpl implements ReviewService {
 
         // 3. Resolve reviewer & participants
         User requester = exchangeRequest.getRequester();
-        User owner = exchangeRequest.getBook().getOwner();
+        User owner = exchangeRequest.getOwner() != null ? exchangeRequest.getOwner() : exchangeRequest.getBook().getOwner();
 
         if (!reviewerId.equals(requester.getId()) && !reviewerId.equals(owner.getId())) {
             throw new IllegalArgumentException("You are not a participant in this exchange");

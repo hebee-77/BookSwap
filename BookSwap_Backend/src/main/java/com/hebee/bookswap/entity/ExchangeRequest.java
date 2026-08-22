@@ -17,8 +17,16 @@ public class ExchangeRequest {
     private User requester;
 
     @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
+    @ManyToOne
     @JoinColumn(name = "book_id", nullable = false)
     private Book book;
+
+    @ManyToOne
+    @JoinColumn(name = "offered_book_id")
+    private Book offeredBook;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50, columnDefinition = "VARCHAR(50)")
@@ -33,6 +41,17 @@ public class ExchangeRequest {
     public ExchangeRequest(User requester, Book book, ExchangeRequestStatus status) {
         this.requester = requester;
         this.book = book;
+        this.status = status;
+        if (book != null) {
+            this.owner = book.getOwner();
+        }
+    }
+
+    public ExchangeRequest(User requester, User owner, Book book, Book offeredBook, ExchangeRequestStatus status) {
+        this.requester = requester;
+        this.owner = owner;
+        this.book = book;
+        this.offeredBook = offeredBook;
         this.status = status;
     }
 
@@ -52,12 +71,28 @@ public class ExchangeRequest {
         this.requester = requester;
     }
 
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
+
     public Book getBook() {
         return book;
     }
 
     public void setBook(Book book) {
         this.book = book;
+    }
+
+    public Book getOfferedBook() {
+        return offeredBook;
+    }
+
+    public void setOfferedBook(Book offeredBook) {
+        this.offeredBook = offeredBook;
     }
 
     public ExchangeRequestStatus getStatus() {

@@ -15,10 +15,12 @@ import com.hebee.bookswap.service.ExchangeRequestService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 @SuppressWarnings("null")
 public class ExchangeRequestServiceImpl implements ExchangeRequestService {
 
@@ -61,16 +63,35 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
             throw new IllegalArgumentException("A pending request already exists for this book");
         }
 
-        ExchangeRequest exchangeRequest = exchangeRequestMapper.toEntity(request, requester, book);
+        Book offeredBook = null;
+        if (request.getOfferedBookId() != null) {
+            offeredBook = bookRepository.findById(request.getOfferedBookId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Offered book not found"));
+
+            if (!offeredBook.getOwner().getId().equals(requester.getId())) {
+                throw new IllegalArgumentException("You can only offer books that you own");
+            }
+
+            if (offeredBook.getId().equals(book.getId())) {
+                throw new IllegalArgumentException("Offered book cannot be the same as requested book");
+            }
+        }
+
+        User owner = book.getOwner();
+        ExchangeRequest exchangeRequest = exchangeRequestMapper.toEntity(request, requester, owner, book, offeredBook);
         exchangeRequest.setStatus(ExchangeRequestStatus.PENDING);
 
         ExchangeRequest savedRequest = exchangeRequestRepository.save(exchangeRequest);
 
         // Notify the owner of the requested book
+        String notificationMsg = offeredBook != null
+                ? String.format("User %s requested your book \"%s\" and offered \"%s\" in exchange.", requester.getName(), book.getTitle(), offeredBook.getTitle())
+                : String.format("User %s requested your book \"%s\".", requester.getName(), book.getTitle());
+
         notificationService.createNotification(
-            book.getOwner(),
+            owner,
             "SWAP_REQUEST",
-            String.format("User %s requested your book \"%s\".", requester.getName(), book.getTitle()),
+            notificationMsg,
             savedRequest.getId()
         );
 
@@ -78,6 +99,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ExchangeRequestResponse getRequestById(Long id) {
         ExchangeRequest exchangeRequest = exchangeRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
@@ -85,6 +107,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExchangeRequestResponse> getAllRequests() {
         return exchangeRequestRepository.findAll().stream()
                 .map(exchangeRequestMapper::toResponse)
@@ -92,6 +115,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExchangeRequestResponse> getRequestsByRequester(Long requesterId) {
         if (!userRepository.existsById(requesterId)) {
             throw new ResourceNotFoundException("User not found");
@@ -102,6 +126,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExchangeRequestResponse> getRequestsByBook(Long bookId) {
         if (!bookRepository.existsById(bookId)) {
             throw new ResourceNotFoundException("Book not found");
@@ -117,7 +142,8 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
         User currentUser = getAuthenticatedUser();
 
-        if (!exchangeRequest.getBook().getOwner().getId().equals(currentUser.getId())) {
+        User owner = exchangeRequest.getOwner() != null ? exchangeRequest.getOwner() : exchangeRequest.getBook().getOwner();
+        if (!owner.getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("Access denied");
         }
 
@@ -128,13 +154,40 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         exchangeRequest.setStatus(ExchangeRequestStatus.ACCEPTED);
         ExchangeRequest savedRequest = exchangeRequestRepository.save(exchangeRequest);
 
+        // Perform Book Ownership Transfer
+        Book requestedBook = exchangeRequest.getBook();
+        User requester = exchangeRequest.getRequester();
+
+        // 1. Requester receives the requested book
+        requestedBook.setOwner(requester);
+        bookRepository.save(requestedBook);
+
+        // 2. Sender receives the proposed book
+        if (exchangeRequest.getOfferedBook() != null) {
+            Book offeredBook = exchangeRequest.getOfferedBook();
+            offeredBook.setOwner(currentUser);
+            bookRepository.save(offeredBook);
+        }
+
         // Notify the requester
         notificationService.createNotification(
-            exchangeRequest.getRequester(),
+            requester,
             "REQUEST_ACCEPTED",
-            String.format("Your swap request for \"%s\" was accepted by %s!", exchangeRequest.getBook().getTitle(), currentUser.getName()),
+            String.format("Your swap request for \"%s\" was accepted by %s! You received \"%s\".",
+                    requestedBook.getTitle(), currentUser.getName(), requestedBook.getTitle()),
             savedRequest.getId()
         );
+
+        // Notify the owner/sender
+        if (exchangeRequest.getOfferedBook() != null) {
+            notificationService.createNotification(
+                currentUser,
+                "REQUEST_ACCEPTED",
+                String.format("You accepted the swap for \"%s\" and received \"%s\" from %s!",
+                        requestedBook.getTitle(), exchangeRequest.getOfferedBook().getTitle(), requester.getName()),
+                savedRequest.getId()
+            );
+        }
 
         return exchangeRequestMapper.toResponse(savedRequest);
     }
@@ -145,7 +198,8 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
         User currentUser = getAuthenticatedUser();
 
-        if (!exchangeRequest.getBook().getOwner().getId().equals(currentUser.getId())) {
+        User owner = exchangeRequest.getOwner() != null ? exchangeRequest.getOwner() : exchangeRequest.getBook().getOwner();
+        if (!owner.getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("Access denied");
         }
 

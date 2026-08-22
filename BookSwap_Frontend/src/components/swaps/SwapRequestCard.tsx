@@ -40,33 +40,24 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     queryFn: () => bookService.getBookById(request.bookId),
   });
 
-  // Fetch requester's listed books to resolve the offered book
+  // Fetch offered book by offeredBookId if present
+  const { data: offeredBookData, isLoading: isLoadingOfferedBook } = useQuery({
+    queryKey: ['book', request.offeredBookId],
+    queryFn: () => bookService.getBookById(request.offeredBookId!),
+    enabled: !!request.offeredBookId,
+  });
+
+  // Fallback query for requester's listed books if offeredBookId is absent (legacy requests)
   const { data: requesterBooksData, isLoading: isLoadingRequesterBooks } = useQuery({
     queryKey: ['owner-books', request.requesterId],
     queryFn: () => bookService.getBooksByOwner(request.requesterId),
+    enabled: !request.offeredBookId,
   });
 
   const requesterBooks = requesterBooksData?.content || [];
-  
-  // Resolve offered book:
-  // 1. Try to check if we have a localStorage mapping for this target book
-  // 2. If not, pick the first available book from the requester's shelf
-  // 3. Fallback to first book regardless of availability
+
   const getOfferedBook = () => {
-    try {
-      const storedOffers = localStorage.getItem('swap_offers_mapping');
-      if (storedOffers) {
-        const mapping = JSON.parse(storedOffers);
-        const storedOfferedId = mapping[request.bookId];
-        if (storedOfferedId) {
-          const found = requesterBooks.find((b) => b.id === Number(storedOfferedId));
-          if (found) return found;
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    
+    if (offeredBookData) return offeredBookData;
     const available = requesterBooks.find((b) => b.available);
     return available || requesterBooks[0] || null;
   };
@@ -77,10 +68,16 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     mutationFn: () => swapService.acceptRequest(request.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['sent-swaps'] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['user-books'] });
+      queryClient.invalidateQueries({ queryKey: ['owner-books'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       if (requestedBook) {
         queryClient.invalidateQueries({ queryKey: ['book', requestedBook.id] });
+      }
+      if (request.offeredBookId) {
+        queryClient.invalidateQueries({ queryKey: ['book', request.offeredBookId] });
       }
       toast.success('Swap request accepted!');
       setShowConfirm(null);
@@ -96,6 +93,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     mutationFn: () => swapService.rejectRequest(request.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['sent-swaps'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Swap request rejected');
       setShowConfirm(null);
@@ -108,11 +106,11 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   });
 
   const isOutgoing = user?.id === request.requesterId;
-  const isIncoming = requestedBook && user?.id === requestedBook.ownerId;
+  const isIncoming = (request.ownerId && user?.id === request.ownerId) || (requestedBook && user?.id === requestedBook.ownerId);
   const isPending = request.status === 'PENDING';
   
   const hasReviewed = myReviews.some((r) => r.exchangeRequestId === request.id);
-  const isParticipant = user && (request.requesterId === user.id || (requestedBook && requestedBook.ownerId === user.id));
+  const isParticipant = user && (request.requesterId === user.id || (request.ownerId && request.ownerId === user.id) || (requestedBook && requestedBook.ownerId === user.id));
   const canReview = request.status === 'ACCEPTED' && isParticipant && !hasReviewed;
 
   const getConditionStyles = (condition: string) => {
@@ -130,7 +128,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     }
   };
 
-  const isLoading = isLoadingReqBook || isLoadingRequesterBooks;
+  const isLoading = isLoadingReqBook || (request.offeredBookId ? isLoadingOfferedBook : isLoadingRequesterBooks);
 
   if (isLoading) {
     return (
@@ -242,7 +240,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
-              <span>{isOutgoing ? `Recipient ID: #${requestedBook?.ownerId}` : `Requester ID: #${request.requesterId}`}</span>
+              <span>{isOutgoing ? `Recipient ID: #${request.ownerId || requestedBook?.ownerId}` : `Requester ID: #${request.requesterId}`}</span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />

@@ -11,9 +11,15 @@ public interface ExchangeRequestRepository extends JpaRepository<ExchangeRequest
 
     List<ExchangeRequest> findByRequesterId(Long requesterId);
 
+    List<ExchangeRequest> findByOwnerId(Long ownerId);
+
     List<ExchangeRequest> findByBookId(Long bookId);
+
+    List<ExchangeRequest> findByOfferedBookId(Long offeredBookId);
 
     boolean existsByRequesterIdAndBookIdAndStatus(Long requesterId, Long bookId, ExchangeRequestStatus status);
 
     boolean existsByBookIdAndStatus(Long bookId, ExchangeRequestStatus status);
+
+    boolean existsByOfferedBookIdAndStatus(Long offeredBookId, ExchangeRequestStatus status);
 }

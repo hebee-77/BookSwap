@@ -7,7 +7,9 @@ public class ExchangeRequestResponse {
 
     private Long id;
     private Long requesterId;
+    private Long ownerId;
     private Long bookId;
+    private Long offeredBookId;
     private ExchangeRequestStatus status;
     private LocalDateTime createdAt;
 
@@ -18,6 +20,16 @@ public class ExchangeRequestResponse {
         this.id = id;
         this.requesterId = requesterId;
         this.bookId = bookId;
+        this.status = status;
+        this.createdAt = createdAt;
+    }
+
+    public ExchangeRequestResponse(Long id, Long requesterId, Long ownerId, Long bookId, Long offeredBookId, ExchangeRequestStatus status, LocalDateTime createdAt) {
+        this.id = id;
+        this.requesterId = requesterId;
+        this.ownerId = ownerId;
+        this.bookId = bookId;
+        this.offeredBookId = offeredBookId;
         this.status = status;
         this.createdAt = createdAt;
     }
@@ -38,12 +50,28 @@ public class ExchangeRequestResponse {
         this.requesterId = requesterId;
     }
 
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(Long ownerId) {
+        this.ownerId = ownerId;
+    }
+
     public Long getBookId() {
         return bookId;
     }
 
     public void setBookId(Long bookId) {
         this.bookId = bookId;
+    }
+
+    public Long getOfferedBookId() {
+        return offeredBookId;
+    }
+
+    public void setOfferedBookId(Long offeredBookId) {
+        this.offeredBookId = offeredBookId;
     }
 
     public ExchangeRequestStatus getStatus() {

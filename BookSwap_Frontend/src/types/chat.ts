@@ -15,6 +15,11 @@ export interface ExchangeContext {
   bookAuthor: string;
   bookImageUrl?: string;
   bookCondition?: string;
+  offeredBookId?: number;
+  offeredBookTitle?: string;
+  offeredBookAuthor?: string;
+  offeredBookImageUrl?: string;
+  offeredBookCondition?: string;
   requesterId: number;
   requesterName: string;
   ownerId: number;

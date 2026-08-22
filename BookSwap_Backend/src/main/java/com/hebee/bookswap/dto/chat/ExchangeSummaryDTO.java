@@ -11,6 +11,11 @@ public class ExchangeSummaryDTO {
     private String bookAuthor;
     private String bookImageUrl;
     private BookCondition bookCondition;
+    private Long offeredBookId;
+    private String offeredBookTitle;
+    private String offeredBookAuthor;
+    private String offeredBookImageUrl;
+    private BookCondition offeredBookCondition;
     private Long requesterId;
     private String requesterName;
     private Long ownerId;
@@ -73,6 +78,46 @@ public class ExchangeSummaryDTO {
 
     public void setBookCondition(BookCondition bookCondition) {
         this.bookCondition = bookCondition;
+    }
+
+    public Long getOfferedBookId() {
+        return offeredBookId;
+    }
+
+    public void setOfferedBookId(Long offeredBookId) {
+        this.offeredBookId = offeredBookId;
+    }
+
+    public String getOfferedBookTitle() {
+        return offeredBookTitle;
+    }
+
+    public void setOfferedBookTitle(String offeredBookTitle) {
+        this.offeredBookTitle = offeredBookTitle;
+    }
+
+    public String getOfferedBookAuthor() {
+        return offeredBookAuthor;
+    }
+
+    public void setOfferedBookAuthor(String offeredBookAuthor) {
+        this.offeredBookAuthor = offeredBookAuthor;
+    }
+
+    public String getOfferedBookImageUrl() {
+        return offeredBookImageUrl;
+    }
+
+    public void setOfferedBookImageUrl(String offeredBookImageUrl) {
+        this.offeredBookImageUrl = offeredBookImageUrl;
+    }
+
+    public BookCondition getOfferedBookCondition() {
+        return offeredBookCondition;
+    }
+
+    public void setOfferedBookCondition(BookCondition offeredBookCondition) {
+        this.offeredBookCondition = offeredBookCondition;
     }
 
     public Long getRequesterId() {
