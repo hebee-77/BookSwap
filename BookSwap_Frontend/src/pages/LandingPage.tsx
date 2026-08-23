@@ -80,34 +80,48 @@ export const LandingPage: React.FC = () => {
               </Link>
             </motion.div>
 
-            {/* Subtle Visual Book Art/Mockup */}
+            {/* Book Covers Visual Showcase */}
             <motion.div
               variants={itemVariants}
               className="relative mt-12 w-full max-w-4xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
               style={{ contentVisibility: 'auto' }}
             >
-              <div className="aspect-[16/9] bg-gradient-to-br from-primary/10 via-muted to-muted/20 flex items-center justify-center p-8">
+              <div className="aspect-[16/9] bg-gradient-to-br from-primary/10 via-muted to-muted/20 flex items-center justify-center p-6 sm:p-8">
                 <div className="flex gap-4 md:gap-8 items-end max-w-lg">
-                  <div className="h-44 w-32 md:h-64 md:w-44 bg-primary text-primary-foreground rounded-lg shadow-lg flex flex-col justify-between p-4 transform -rotate-6 translate-y-8 hover:translate-y-4 transition-all duration-300">
-                    <BookOpen className="h-8 w-8 opacity-80" />
-                    <div>
-                      <p className="font-bold text-sm md:text-base leading-tight">The Great Gatsby</p>
-                      <p className="text-xs opacity-75 mt-1">F. Scott Fitzgerald</p>
-                    </div>
+                  {/* Left Book: The Jungle Book */}
+                  <div className="group relative h-52 w-28 sm:h-64 sm:w-36 md:h-72 md:w-40 rounded-2xl overflow-hidden shadow-2xl border border-border/40 transform -rotate-6 translate-y-8 hover:translate-y-4 transition-all duration-300 cursor-pointer">
+                    {/* Spine shadow overlay */}
+                    <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/40 via-black/10 to-transparent z-10 pointer-events-none" />
+                    <img
+                      src="/images/jungle-book.jpg"
+                      alt="The Jungle Book by Rudyard Kipling"
+                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      loading="eager"
+                    />
                   </div>
-                  <div className="h-48 w-32 md:h-72 md:w-48 bg-foreground text-background rounded-lg shadow-xl flex flex-col justify-between p-4 z-10 hover:-translate-y-4 transition-all duration-300">
-                    <BookOpen className="h-8 w-8 opacity-85" />
-                    <div>
-                      <p className="font-bold text-base md:text-lg leading-tight">To Kill a Mockingbird</p>
-                      <p className="text-xs opacity-80 mt-1">Harper Lee</p>
-                    </div>
+
+                  {/* Center Book: Harry Potter */}
+                  <div className="group relative h-60 w-32 sm:h-72 sm:w-40 md:h-80 md:w-44 rounded-2xl overflow-hidden shadow-2xl border border-border/40 z-10 hover:-translate-y-4 transition-all duration-300 cursor-pointer">
+                    {/* Spine shadow overlay */}
+                    <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/40 via-black/10 to-transparent z-10 pointer-events-none" />
+                    <img
+                      src="/images/harry-potter.jpg"
+                      alt="Harry Potter and the Philosopher's Stone"
+                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      loading="eager"
+                    />
                   </div>
-                  <div className="h-44 w-32 md:h-64 md:w-44 bg-muted border border-border text-foreground rounded-lg shadow-lg flex flex-col justify-between p-4 transform rotate-6 translate-y-8 hover:translate-y-4 transition-all duration-300">
-                    <BookOpen className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="font-bold text-sm md:text-base leading-tight text-foreground">1984</p>
-                      <p className="text-xs text-muted-foreground mt-1">George Orwell</p>
-                    </div>
+
+                  {/* Right Book: A Dark and Secret Magic */}
+                  <div className="group relative h-52 w-28 sm:h-64 sm:w-36 md:h-72 md:w-40 rounded-2xl overflow-hidden shadow-2xl border border-border/40 transform rotate-6 translate-y-8 hover:translate-y-4 transition-all duration-300 cursor-pointer">
+                    {/* Spine shadow overlay */}
+                    <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/40 via-black/10 to-transparent z-10 pointer-events-none" />
+                    <img
+                      src="/images/dark-and-secret-magic.jpg"
+                      alt="A Dark and Secret Magic by Wallis Kinney"
+                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      loading="eager"
+                    />
                   </div>
                 </div>
               </div>
