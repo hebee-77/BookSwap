@@ -5,7 +5,6 @@ import { BookOpen, Menu, X, LogOut, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { bookService } from '../../services/bookService';
 import { swapService } from '../../services/swapService';
 import { chatService } from '../../services/chatService';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
@@ -17,24 +16,17 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Fetch pending swap requests count dynamically
-  const { data: userBooksData } = useQuery({
-    queryKey: ['user-books', user?.id],
-    queryFn: () => bookService.getBooksByOwner(user!.id),
+  // Fetch pending swap requests count dynamically for authenticated user
+  const { data: myRequests = [] } = useQuery({
+    queryKey: ['my-swap-requests', user?.id],
+    queryFn: () => swapService.getMyRequests(),
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: allRequests = [] } = useQuery({
-    queryKey: ['swap-requests'],
-    queryFn: () => swapService.getAllRequests(),
-    enabled: isAuthenticated && !!user?.id,
-  });
-
-  const userBooks = userBooksData?.content || [];
-  const userBookIds = new Set(userBooks.map((b) => b.id));
-  const pendingReceivedCount = allRequests.filter(
-    (req) => req.status === 'PENDING' && userBookIds.has(req.bookId) && req.requesterId !== user?.id
+  const pendingReceivedCount = myRequests.filter(
+    (req) => req.status === 'PENDING' && req.ownerId === user?.id && req.requesterId !== user?.id
   ).length;
+
 
   const queryClient = useQueryClient();
 

@@ -31,17 +31,17 @@ export const DashboardPage: React.FC = () => {
   const userBooks = userBooksData?.content || [];
   const totalBooksCount = userBooksData?.totalElements || 0;
 
-  // Fetch all requests to filter pending received swaps
-  const { data: allRequests = [], isLoading: isLoadingAllRequests } = useQuery({
-    queryKey: ['swap-requests'],
-    queryFn: () => swapService.getAllRequests(),
+  // Fetch user's requests to filter pending received swaps
+  const { data: myRequests = [], isLoading: isLoadingMyRequests } = useQuery({
+    queryKey: ['my-swap-requests', user?.id],
+    queryFn: () => swapService.getMyRequests(),
     enabled: !!user?.id,
   });
 
-  const userBookIds = new Set(userBooks.map((b) => b.id));
-  const pendingReceivedCount = allRequests.filter(
-    (req) => req.status === 'PENDING' && userBookIds.has(req.bookId) && req.requesterId !== user?.id
+  const pendingReceivedCount = myRequests.filter(
+    (req) => req.status === 'PENDING' && req.ownerId === user?.id && req.requesterId !== user?.id
   ).length;
+
 
   // Fetch recent notifications from backend
   const { data: notifications = [] } = useQuery({
@@ -145,7 +145,7 @@ export const DashboardPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground">Pending Received</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-2xl font-extrabold text-foreground">
-                    {isLoadingAllRequests ? '...' : pendingReceivedCount}
+                    {isLoadingMyRequests ? '...' : pendingReceivedCount}
                   </p>
                   {pendingReceivedCount > 0 && (
                     <span className="inline-flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />

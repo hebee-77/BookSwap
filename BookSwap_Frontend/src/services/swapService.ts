@@ -25,6 +25,11 @@ export const swapService = {
     return response.data;
   },
 
+  getMyRequests: async (): Promise<ExchangeRequest[]> => {
+    const response = await api.get<ExchangeRequest[]>('/exchange-requests/my');
+    return response.data;
+  },
+
   getRequestsByRequester: async (requesterId: number): Promise<ExchangeRequest[]> => {
     const response = await api.get<ExchangeRequest[]>(`/exchange-requests/requester/${requesterId}`);
     return response.data;

@@ -7,6 +7,7 @@ public interface ExchangeRequestService {
     ExchangeRequestResponse createRequest(ExchangeRequestCreate request);
     ExchangeRequestResponse getRequestById(Long id);
     List<ExchangeRequestResponse> getAllRequests();
+    List<ExchangeRequestResponse> getMyRequests();
     List<ExchangeRequestResponse> getRequestsByRequester(Long requesterId);
     List<ExchangeRequestResponse> getRequestsByBook(Long bookId);
     ExchangeRequestResponse acceptRequest(Long id);

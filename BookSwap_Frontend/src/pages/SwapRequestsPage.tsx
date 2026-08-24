@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, ArrowLeftRight, Inbox, Send, History, RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { swapService } from '../services/swapService';
-import { bookService } from '../services/bookService';
 import { SwapRequestCard } from '../components/swaps/SwapRequestCard';
 import { EmptySwapRequests } from '../components/swaps/EmptySwapRequests';
+import type { ExchangeRequest } from '../types/swap';
 
 type TabType = 'received' | 'sent' | 'history';
 
@@ -14,49 +14,44 @@ export const SwapRequestsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'ACTIVE_RETURNS' | 'COMPLETED'>('ALL');
 
-  // Fetch all requests in the system
-  const { data: allRequests = [], isLoading: isLoadingAll } = useQuery({
-    queryKey: ['swap-requests'],
-    queryFn: () => swapService.getAllRequests(),
+  // Fetch only the authenticated user's participating exchange requests
+  const { data: myRequestsRaw = [], isLoading } = useQuery({
+    queryKey: ['my-swap-requests', user?.id],
+    queryFn: () => swapService.getMyRequests(),
     enabled: !!user?.id,
   });
 
-  // Fetch sent requests directly
-  const { data: sentRequests = [], isLoading: isLoadingSent } = useQuery({
-    queryKey: ['sent-swaps', user?.id],
-    queryFn: () => swapService.getRequestsByRequester(user!.id),
-    enabled: !!user?.id,
-  });
+  // Deduplicate by ID
+  const deduplicatedRequests = React.useMemo(() => {
+    const map = new Map<number, ExchangeRequest>();
+    myRequestsRaw.forEach((req) => {
+      if (!map.has(req.id)) {
+        map.set(req.id, req);
+      }
+    });
+    return Array.from(map.values());
+  }, [myRequestsRaw]);
 
-  // Fetch user's own books to filter incoming requests
-  const { data: userBooksData, isLoading: isLoadingUserBooks } = useQuery({
-    queryKey: ['user-books', user?.id],
-    queryFn: () => bookService.getBooksByOwner(user!.id),
-    enabled: !!user?.id,
-  });
-
-  const userBooks = userBooksData?.content || [];
-  const userBookIds = new Set(userBooks.map((b) => b.id));
-
-  // Incoming requests: requests where book belongs to current user's library or ownerId matches
-  const receivedRequests = allRequests.filter(
-    (req) => (req.ownerId === user?.id || userBookIds.has(req.bookId)) && req.requesterId !== user?.id
+  // 1. Received Pending Requests: The current user is the book owner and status is PENDING
+  const pendingReceived = deduplicatedRequests.filter(
+    (req) => req.status === 'PENDING' && req.ownerId === user?.id && req.requesterId !== user?.id
   );
 
-  // Split into pending and history
-  const pendingReceived = receivedRequests.filter((req) => req.status === 'PENDING');
-  const pendingSent = sentRequests.filter((req) => req.status === 'PENDING');
+  // 2. Sent Pending Requests: The current user is the requester and status is PENDING
+  const pendingSent = deduplicatedRequests.filter(
+    (req) => req.status === 'PENDING' && req.requesterId === user?.id
+  );
 
-  // History: any swap involving user that is accepted/rejected/return
-  const historyRequests = allRequests
+  // 3. History: Any processed exchange involving user (ACCEPTED, REJECTED, RETURN_*, COMPLETED)
+  const historyRequests = deduplicatedRequests
     .filter(
       (req) =>
         req.status !== 'PENDING' &&
-        (req.requesterId === user?.id || req.ownerId === user?.id || userBookIds.has(req.bookId))
+        (req.requesterId === user?.id || req.ownerId === user?.id)
     )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  // Count active returns requiring action
+  // Count active returns requiring attention
   const activeReturnsCount = historyRequests.filter(
     (req) =>
       req.status === 'RETURN_REQUESTED' ||
@@ -79,8 +74,6 @@ export const SwapRequestsPage: React.FC = () => {
     }
     return true;
   });
-
-  const isLoading = isLoadingAll || isLoadingSent || isLoadingUserBooks;
 
   const tabItems: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
     {

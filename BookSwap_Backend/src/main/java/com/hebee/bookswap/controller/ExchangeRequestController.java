@@ -36,6 +36,13 @@ public class ExchangeRequestController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<List<ExchangeRequestResponse>> getMyRequests() {
+        List<ExchangeRequestResponse> response = exchangeRequestService.getMyRequests();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+
     @GetMapping("/requester/{requesterId}")
     public ResponseEntity<List<ExchangeRequestResponse>> getRequestsByRequester(@PathVariable Long requesterId) {
         List<ExchangeRequestResponse> response = exchangeRequestService.getRequestsByRequester(requesterId);

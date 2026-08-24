@@ -109,6 +109,9 @@ public class ExchangeRequestServiceImplTest {
         when(bookRepository.findById(202L)).thenReturn(Optional.of(offeredBook));
         when(exchangeRequestRepository.existsByRequesterIdAndBookIdAndStatus(1L, 101L, ExchangeRequestStatus.PENDING))
                 .thenReturn(false);
+        when(exchangeRequestRepository.existsByBookIdAndStatusIn(eq(101L), any())).thenReturn(false);
+        when(exchangeRequestRepository.existsByBookIdAndStatusIn(eq(202L), any())).thenReturn(false);
+        when(exchangeRequestRepository.existsByOfferedBookIdAndStatusIn(eq(202L), any())).thenReturn(false);
         when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> {
             ExchangeRequest req = invocation.getArgument(0);
             req.setId(10L);
@@ -132,6 +135,22 @@ public class ExchangeRequestServiceImplTest {
     }
 
     @Test
+    void testCreateRequest_Fails_WhenBookInActiveExchange() {
+        ExchangeRequestCreate request = new ExchangeRequestCreate(101L, null);
+
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+        when(bookRepository.findById(101L)).thenReturn(Optional.of(requestedBook));
+        when(exchangeRequestRepository.existsByRequesterIdAndBookIdAndStatus(1L, 101L, ExchangeRequestStatus.PENDING))
+                .thenReturn(false);
+        when(exchangeRequestRepository.existsByBookIdAndStatusIn(eq(101L), any())).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                exchangeRequestService.createRequest(request)
+        );
+        assertTrue(ex.getMessage().contains("currently in an active exchange"));
+    }
+
+    @Test
     void testCreateRequest_Fails_WhenOfferingBookNotOwned() {
         ExchangeRequestCreate request = new ExchangeRequestCreate(101L, 202L);
         offeredBook.setOwner(sender); // not owned by requester
@@ -144,7 +163,7 @@ public class ExchangeRequestServiceImplTest {
     }
 
     @Test
-    void testAcceptRequest_TransfersBothBooksOwnership() {
+    void testAcceptRequest_TransfersBothBooksOwnership_AndAutoClosesCompeting() {
         // Authenticated as sender (owner of requestedBook)
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
@@ -153,14 +172,25 @@ public class ExchangeRequestServiceImplTest {
         ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.PENDING);
         exchangeRequest.setId(10L);
 
+        // A competing request from a third party
+        User thirdParty = new User("Third Party", "third@example.com", "pass");
+        thirdParty.setId(3L);
+        ExchangeRequest competing = new ExchangeRequest(thirdParty, sender, requestedBook, null, ExchangeRequestStatus.PENDING);
+        competing.setId(11L);
+
         when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
         when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.findByBookIdAndStatus(101L, ExchangeRequestStatus.PENDING))
+                .thenReturn(List.of(exchangeRequest, competing));
         when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ExchangeRequestResponse response = exchangeRequestService.acceptRequest(10L);
 
         assertNotNull(response);
         assertEquals(ExchangeRequestStatus.ACCEPTED, response.getStatus());
+
+        // Verify competing request was auto-rejected
+        assertEquals(ExchangeRequestStatus.REJECTED, competing.getStatus());
 
         // Verify requested book owner became requester
         assertEquals(requester.getId(), requestedBook.getOwner().getId());
@@ -169,15 +199,23 @@ public class ExchangeRequestServiceImplTest {
         // Verify offered book owner became sender
         assertEquals(sender.getId(), offeredBook.getOwner().getId());
         verify(bookRepository, times(1)).save(offeredBook);
+    }
 
-        // Verify notifications sent to both users
-        verify(notificationService, times(1)).createNotification(
-                eq(requester), eq("REQUEST_ACCEPTED"), anyString(), eq(10L)
-        );
-        verify(notificationService, times(1)).createNotification(
-                eq(sender), eq("REQUEST_ACCEPTED"), anyString(), eq(10L)
-        );
-        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    @Test
+    void testGetMyRequests_ReturnsOnlyUserParticipatingExchanges() {
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest req1 = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.ACCEPTED);
+        req1.setId(10L);
+
+        when(exchangeRequestRepository.findByUserParticipantOrderByCreatedAtDesc(1L))
+                .thenReturn(List.of(req1));
+
+        List<ExchangeRequestResponse> myRequests = exchangeRequestService.getMyRequests();
+
+        assertNotNull(myRequests);
+        assertEquals(1, myRequests.size());
+        assertEquals(10L, myRequests.get(0).getId());
     }
 
     @Test

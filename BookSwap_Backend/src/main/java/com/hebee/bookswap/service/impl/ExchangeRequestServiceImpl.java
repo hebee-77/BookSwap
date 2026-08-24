@@ -33,6 +33,14 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    private static final List<ExchangeRequestStatus> ACTIVE_EXCHANGE_STATUSES = List.of(
+            ExchangeRequestStatus.ACCEPTED,
+            ExchangeRequestStatus.RETURN_REQUESTED,
+            ExchangeRequestStatus.RETURN_ACCEPTED,
+            ExchangeRequestStatus.RETURN_IN_PROGRESS,
+            ExchangeRequestStatus.RETURNED
+    );
+
     private final ExchangeRequestRepository exchangeRequestRepository;
     private final UserRepository userRepository;
     private final BookRepository bookRepository;
@@ -112,9 +120,15 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
             throw new IllegalArgumentException("You cannot request your own book");
         }
 
+        // Prevent duplicate pending requests from the same user for the same book
         if (exchangeRequestRepository.existsByRequesterIdAndBookIdAndStatus(
                 requester.getId(), book.getId(), ExchangeRequestStatus.PENDING)) {
-            throw new IllegalArgumentException("A pending request already exists for this book");
+            throw new IllegalArgumentException("You already have a pending exchange request for this book");
+        }
+
+        // Prevent requesting books that are currently in an active exchange/loan
+        if (exchangeRequestRepository.existsByBookIdAndStatusIn(book.getId(), ACTIVE_EXCHANGE_STATUSES)) {
+            throw new IllegalArgumentException("This book is currently in an active exchange and is not available.");
         }
 
         Book offeredBook = null;
@@ -128,6 +142,12 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
 
             if (offeredBook.getId().equals(book.getId())) {
                 throw new IllegalArgumentException("Offered book cannot be the same as requested book");
+            }
+
+            // Prevent offering books that are currently in an active exchange/loan
+            if (exchangeRequestRepository.existsByBookIdAndStatusIn(offeredBook.getId(), ACTIVE_EXCHANGE_STATUSES) ||
+                exchangeRequestRepository.existsByOfferedBookIdAndStatusIn(offeredBook.getId(), ACTIVE_EXCHANGE_STATUSES)) {
+                throw new IllegalArgumentException("Your offered book is currently in an active exchange and is not available.");
             }
         }
 
@@ -167,6 +187,15 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     @Transactional(readOnly = true)
     public List<ExchangeRequestResponse> getAllRequests() {
         return exchangeRequestRepository.findAll().stream()
+                .map(exchangeRequestMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExchangeRequestResponse> getMyRequests() {
+        User currentUser = getAuthenticatedUser();
+        return exchangeRequestRepository.findByUserParticipantOrderByCreatedAtDesc(currentUser.getId()).stream()
                 .map(exchangeRequestMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -224,6 +253,35 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
             Book offeredBook = exchangeRequest.getOfferedBook();
             offeredBook.setOwner(currentUser);
             bookRepository.save(offeredBook);
+        }
+
+        // 3. Auto-close / decline all other competing PENDING requests for this book to prevent duplicates
+        List<ExchangeRequest> otherPendingForBook = exchangeRequestRepository.findByBookIdAndStatus(requestedBook.getId(), ExchangeRequestStatus.PENDING);
+        for (ExchangeRequest other : otherPendingForBook) {
+            if (!other.getId().equals(savedRequest.getId())) {
+                other.setStatus(ExchangeRequestStatus.REJECTED);
+                exchangeRequestRepository.save(other);
+                recordHistory(other, currentUser, ExchangeEventType.EXCHANGE_REJECTED, "Automatically declined because book was swapped with another user");
+                notificationService.createNotification(
+                    other.getRequester(),
+                    "REQUEST_REJECTED",
+                    String.format("Your request for \"%s\" was automatically closed because the owner accepted another exchange.", requestedBook.getTitle()),
+                    other.getId()
+                );
+            }
+        }
+
+        // Auto-close competing requests for the offered book if present
+        if (exchangeRequest.getOfferedBook() != null) {
+            Book offeredBook = exchangeRequest.getOfferedBook();
+            List<ExchangeRequest> otherPendingForOffered = exchangeRequestRepository.findByBookIdAndStatus(offeredBook.getId(), ExchangeRequestStatus.PENDING);
+            for (ExchangeRequest other : otherPendingForOffered) {
+                if (!other.getId().equals(savedRequest.getId())) {
+                    other.setStatus(ExchangeRequestStatus.REJECTED);
+                    exchangeRequestRepository.save(other);
+                    recordHistory(other, currentUser, ExchangeEventType.EXCHANGE_REJECTED, "Automatically declined because offered book was swapped");
+                }
+            }
         }
 
         // Record history
