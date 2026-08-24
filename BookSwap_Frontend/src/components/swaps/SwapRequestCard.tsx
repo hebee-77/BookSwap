@@ -17,6 +17,7 @@ import {
   PackageCheck,
   CheckCircle2,
   History,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
@@ -31,6 +32,8 @@ import { ReviewDialog } from '../reviews/ReviewDialog';
 import { BookCover } from '../books/BookCover';
 import { ReturnActionDialog, type ReturnActionType } from './ReturnActionDialog';
 import { ReturnDetailsModal } from './ReturnDetailsModal';
+import { ReturnOtpGenerateDialog } from './ReturnOtpGenerateDialog';
+import { ReturnOtpVerifyDialog } from './ReturnOtpVerifyDialog';
 
 interface SwapRequestCardProps {
   request: ExchangeRequest;
@@ -44,6 +47,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [returnAction, setReturnAction] = useState<ReturnActionType | null>(null);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showGenerateOtp, setShowGenerateOtp] = useState(false);
+  const [showVerifyOtp, setShowVerifyOtp] = useState(false);
 
   // Fetch reviews written by the user to check eligibility
   const { data: myReviews = [] } = useQuery({
@@ -415,15 +420,26 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               </>
             )}
 
-            {/* 3. Holder marks book as returned when RETURN_ACCEPTED or RETURN_IN_PROGRESS */}
+            {/* 3. RETURN_IN_PROGRESS: Owner generates OTP; Holder verifies OTP */}
+            {isOriginalOwner && (request.status === 'RETURN_ACCEPTED' || request.status === 'RETURN_IN_PROGRESS') && (
+              <Button
+                size="sm"
+                onClick={() => setShowGenerateOtp(true)}
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>Generate Return Code</span>
+              </Button>
+            )}
+
             {isCurrentHolder && (request.status === 'RETURN_ACCEPTED' || request.status === 'RETURN_IN_PROGRESS') && (
               <Button
                 size="sm"
-                onClick={() => setReturnAction('mark_returned')}
-                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+                onClick={() => setShowVerifyOtp(true)}
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
               >
                 <PackageCheck className="h-3.5 w-3.5" />
-                <span>Mark as Returned</span>
+                <span>Verify Return</span>
               </Button>
             )}
 
@@ -432,7 +448,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               <Button
                 size="sm"
                 onClick={() => setReturnAction('confirm_received')}
-                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>Confirm Received</span>
@@ -522,6 +538,26 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
             exchangeId={request.id}
             bookTitle={bookTitle}
             actionType={returnAction}
+          />
+        )}
+
+        {/* Modal: Generate Return OTP */}
+        {showGenerateOtp && (
+          <ReturnOtpGenerateDialog
+            isOpen={showGenerateOtp}
+            onClose={() => setShowGenerateOtp(false)}
+            exchangeId={request.id}
+            bookTitle={bookTitle}
+          />
+        )}
+
+        {/* Modal: Verify Return OTP */}
+        {showVerifyOtp && (
+          <ReturnOtpVerifyDialog
+            isOpen={showVerifyOtp}
+            onClose={() => setShowVerifyOtp(false)}
+            exchangeId={request.id}
+            bookTitle={bookTitle}
           />
         )}
 

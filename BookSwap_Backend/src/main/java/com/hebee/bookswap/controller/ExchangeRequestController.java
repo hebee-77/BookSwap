@@ -86,6 +86,20 @@ public class ExchangeRequestController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @PostMapping("/{id}/return/otp/generate")
+    public ResponseEntity<ReturnOtpGenerateResponseDTO> generateReturnOtp(@PathVariable Long id) {
+        ReturnOtpGenerateResponseDTO response = exchangeRequestService.generateReturnOtp(id);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/return/otp/verify")
+    public ResponseEntity<ReturnDetailsResponseDTO> verifyReturnOtp(
+            @PathVariable Long id,
+            @Valid @RequestBody ReturnOtpVerifyRequestDTO request) {
+        ReturnDetailsResponseDTO response = exchangeRequestService.verifyReturnOtp(id, request);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @PostMapping("/{id}/return/mark-returned")
     public ResponseEntity<ReturnDetailsResponseDTO> markReturned(@PathVariable Long id) {
         ReturnDetailsResponseDTO response = exchangeRequestService.markReturned(id);

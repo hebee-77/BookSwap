@@ -16,6 +16,8 @@ public interface ExchangeRequestService {
     ReturnDetailsResponseDTO requestReturn(Long exchangeId, ReturnRequestCreateDTO request);
     ReturnDetailsResponseDTO acceptReturn(Long exchangeId);
     ReturnDetailsResponseDTO declineReturn(Long exchangeId, ReturnRequestCreateDTO request);
+    ReturnOtpGenerateResponseDTO generateReturnOtp(Long exchangeId);
+    ReturnDetailsResponseDTO verifyReturnOtp(Long exchangeId, ReturnOtpVerifyRequestDTO request);
     ReturnDetailsResponseDTO markReturned(Long exchangeId);
     ReturnDetailsResponseDTO confirmReceived(Long exchangeId);
     ReturnDetailsResponseDTO getReturnDetails(Long exchangeId);

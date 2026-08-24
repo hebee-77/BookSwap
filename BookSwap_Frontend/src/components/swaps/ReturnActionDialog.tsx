@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { RotateCcw, Check, X, PackageCheck, CheckCircle2, MessageSquare } from 'lucide-react';
+import { RotateCcw, Check, X, CheckCircle2, MessageSquare } from 'lucide-react';
 import { swapService } from '../../services/swapService';
 import { Button } from '../ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
@@ -12,7 +12,6 @@ export type ReturnActionType =
   | 'request_return'
   | 'accept_return'
   | 'decline_return'
-  | 'mark_returned'
   | 'confirm_received';
 
 interface ReturnActionDialogProps {
@@ -55,8 +54,6 @@ export const ReturnActionDialog: React.FC<ReturnActionDialogProps> = ({
           return await swapService.acceptReturn(exchangeId);
         case 'decline_return':
           return await swapService.declineReturn(exchangeId, { message });
-        case 'mark_returned':
-          return await swapService.markReturned(exchangeId);
         case 'confirm_received':
           return await swapService.confirmReceived(exchangeId);
         default:
@@ -69,7 +66,6 @@ export const ReturnActionDialog: React.FC<ReturnActionDialogProps> = ({
         request_return: 'Return request sent to the current holder.',
         accept_return: 'Return request accepted. Return is now in progress.',
         decline_return: 'Return request declined.',
-        mark_returned: 'Book marked as returned. Waiting for owner confirmation.',
         confirm_received: 'Receipt confirmed! Book return completed and restored to your shelf.',
       };
       toast.success(msgs[actionType] || 'Action completed successfully');
@@ -115,15 +111,6 @@ export const ReturnActionDialog: React.FC<ReturnActionDialogProps> = ({
           confirmVariant: 'destructive' as const,
           placeholder: 'Reason for declining (e.g. Currently halfway through, can I return next week?)...',
           showInput: true,
-        };
-      case 'mark_returned':
-        return {
-          title: 'Mark Book as Returned?',
-          description: `Have you handed over or dispatched "${bookTitle}" back to the owner?`,
-          icon: <PackageCheck className="h-5 w-5 text-purple-500" />,
-          confirmText: 'Yes, Mark as Returned',
-          confirmVariant: 'default' as const,
-          showInput: false,
         };
       case 'confirm_received':
         return {

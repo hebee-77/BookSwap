@@ -11,6 +11,7 @@ import {
   PackageCheck,
   CheckCircle2,
   History,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { swapService } from '../../services/swapService';
@@ -21,6 +22,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SwapStatusBadge } from '../swaps/SwapStatusBadge';
 import { ReturnActionDialog, type ReturnActionType } from '../swaps/ReturnActionDialog';
 import { ReturnDetailsModal } from '../swaps/ReturnDetailsModal';
+import { ReturnOtpGenerateDialog } from '../swaps/ReturnOtpGenerateDialog';
+import { ReturnOtpVerifyDialog } from '../swaps/ReturnOtpVerifyDialog';
 
 interface ExchangeBannerProps {
   exchange: ExchangeContext;
@@ -36,6 +39,8 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [returnAction, setReturnAction] = useState<ReturnActionType | null>(null);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showGenerateOtp, setShowGenerateOtp] = useState(false);
+  const [showVerifyOtp, setShowVerifyOtp] = useState(false);
 
   const isOwner = user?.id === exchange.ownerId;
   const isHolder = user?.id === exchange.requesterId;
@@ -205,14 +210,26 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
             </>
           )}
 
+          {/* RETURN_IN_PROGRESS: Owner generates OTP; Holder verifies OTP */}
+          {isOwner && (exchange.status === 'RETURN_ACCEPTED' || exchange.status === 'RETURN_IN_PROGRESS') && (
+            <Button
+              size="sm"
+              onClick={() => setShowGenerateOtp(true)}
+              className="h-8 text-xs gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              <span>Generate Return Code</span>
+            </Button>
+          )}
+
           {isHolder && (exchange.status === 'RETURN_ACCEPTED' || exchange.status === 'RETURN_IN_PROGRESS') && (
             <Button
               size="sm"
-              onClick={() => setReturnAction('mark_returned')}
-              className="h-8 text-xs gap-1 font-semibold bg-purple-600 hover:bg-purple-700 text-white"
+              onClick={() => setShowVerifyOtp(true)}
+              className="h-8 text-xs gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <PackageCheck className="h-3.5 w-3.5" />
-              <span>Mark as Returned</span>
+              <span>Verify Return</span>
             </Button>
           )}
 
@@ -220,7 +237,7 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
             <Button
               size="sm"
               onClick={() => setReturnAction('confirm_received')}
-              className="h-8 text-xs gap-1 font-semibold bg-teal-600 hover:bg-teal-700 text-white"
+              className="h-8 text-xs gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>Confirm Receipt</span>
@@ -240,6 +257,28 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
           onSuccess={() => {
             onStatusUpdated?.();
           }}
+        />
+      )}
+
+      {/* Generate Return OTP Dialog */}
+      {showGenerateOtp && (
+        <ReturnOtpGenerateDialog
+          isOpen={showGenerateOtp}
+          onClose={() => setShowGenerateOtp(false)}
+          exchangeId={exchange.id}
+          bookTitle={exchange.bookTitle}
+          onSuccess={() => onStatusUpdated?.()}
+        />
+      )}
+
+      {/* Verify Return OTP Dialog */}
+      {showVerifyOtp && (
+        <ReturnOtpVerifyDialog
+          isOpen={showVerifyOtp}
+          onClose={() => setShowVerifyOtp(false)}
+          exchangeId={exchange.id}
+          bookTitle={exchange.bookTitle}
+          onSuccess={() => onStatusUpdated?.()}
         />
       )}
 

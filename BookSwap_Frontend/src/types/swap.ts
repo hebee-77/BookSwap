@@ -9,6 +9,8 @@ export type ExchangeRequestStatus =
   | 'RETURNED'
   | 'COMPLETED';
 
+export type ReturnOtpStatus = 'ACTIVE' | 'VERIFIED' | 'EXPIRED' | 'LOCKED';
+
 export type ExchangeEventType =
   | 'EXCHANGE_CREATED'
   | 'EXCHANGE_ACCEPTED'
@@ -17,6 +19,11 @@ export type ExchangeEventType =
   | 'RETURN_ACCEPTED'
   | 'RETURN_DECLINED'
   | 'RETURN_STARTED'
+  | 'RETURN_OTP_GENERATED'
+  | 'RETURN_OTP_REGENERATED'
+  | 'RETURN_OTP_VERIFIED'
+  | 'RETURN_OTP_EXPIRED'
+  | 'RETURN_OTP_LOCKED'
   | 'BOOK_RETURNED'
   | 'OWNER_CONFIRMED'
   | 'EXCHANGE_COMPLETED';
@@ -45,6 +52,17 @@ export interface ExchangeRequestCreate {
 
 export interface ReturnRequestCreate {
   message?: string;
+}
+
+export interface ReturnOtpGenerateResponse {
+  exchangeRequestId: number;
+  status: ReturnOtpStatus;
+  otp: string;
+  expiresAt: string;
+}
+
+export interface ReturnOtpVerifyRequest {
+  otp: string;
 }
 
 export interface ExchangeHistoryItem {
@@ -83,10 +101,13 @@ export interface ReturnDetailsResponse {
   returnedAt?: string | null;
   confirmedAt?: string | null;
   returnMessage?: string | null;
+  hasActiveReturnOtp?: boolean;
+  returnOtpExpiresAt?: string | null;
   canRequestReturn: boolean;
   canAcceptReturn: boolean;
   canDeclineReturn: boolean;
-  canMarkReturned: boolean;
+  canGenerateReturnOtp?: boolean;
+  canVerifyReturnOtp?: boolean;
   canConfirmReceived: boolean;
   history: ExchangeHistoryItem[];
 }

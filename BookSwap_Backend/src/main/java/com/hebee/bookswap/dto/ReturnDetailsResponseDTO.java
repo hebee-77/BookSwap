@@ -39,11 +39,16 @@ public class ReturnDetailsResponseDTO {
     private LocalDateTime confirmedAt;
     private String returnMessage;
 
+    // OTP Status metadata (Never exposes raw OTP or hash)
+    private boolean hasActiveReturnOtp;
+    private LocalDateTime returnOtpExpiresAt;
+
     // Allowed actions for the calling user
     private boolean canRequestReturn;
     private boolean canAcceptReturn;
     private boolean canDeclineReturn;
-    private boolean canMarkReturned;
+    private boolean canGenerateReturnOtp;
+    private boolean canVerifyReturnOtp;
     private boolean canConfirmReceived;
 
     // Audit history list
@@ -244,6 +249,22 @@ public class ReturnDetailsResponseDTO {
         this.returnMessage = returnMessage;
     }
 
+    public boolean isHasActiveReturnOtp() {
+        return hasActiveReturnOtp;
+    }
+
+    public void setHasActiveReturnOtp(boolean hasActiveReturnOtp) {
+        this.hasActiveReturnOtp = hasActiveReturnOtp;
+    }
+
+    public LocalDateTime getReturnOtpExpiresAt() {
+        return returnOtpExpiresAt;
+    }
+
+    public void setReturnOtpExpiresAt(LocalDateTime returnOtpExpiresAt) {
+        this.returnOtpExpiresAt = returnOtpExpiresAt;
+    }
+
     public boolean isCanRequestReturn() {
         return canRequestReturn;
     }
@@ -268,12 +289,20 @@ public class ReturnDetailsResponseDTO {
         this.canDeclineReturn = canDeclineReturn;
     }
 
-    public boolean isCanMarkReturned() {
-        return canMarkReturned;
+    public boolean isCanGenerateReturnOtp() {
+        return canGenerateReturnOtp;
     }
 
-    public void setCanMarkReturned(boolean canMarkReturned) {
-        this.canMarkReturned = canMarkReturned;
+    public void setCanGenerateReturnOtp(boolean canGenerateReturnOtp) {
+        this.canGenerateReturnOtp = canGenerateReturnOtp;
+    }
+
+    public boolean isCanVerifyReturnOtp() {
+        return canVerifyReturnOtp;
+    }
+
+    public void setCanVerifyReturnOtp(boolean canVerifyReturnOtp) {
+        this.canVerifyReturnOtp = canVerifyReturnOtp;
     }
 
     public boolean isCanConfirmReceived() {

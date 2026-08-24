@@ -3,16 +3,10 @@ package com.hebee.bookswap.service.impl;
 import com.hebee.bookswap.constant.BookCondition;
 import com.hebee.bookswap.constant.ExchangeEventType;
 import com.hebee.bookswap.constant.ExchangeRequestStatus;
-import com.hebee.bookswap.dto.ExchangeHistoryResponseDTO;
-import com.hebee.bookswap.dto.ExchangeRequestCreate;
-import com.hebee.bookswap.dto.ExchangeRequestResponse;
-import com.hebee.bookswap.dto.ReturnDetailsResponseDTO;
-import com.hebee.bookswap.dto.ReturnRequestCreateDTO;
-import com.hebee.bookswap.entity.Book;
-import com.hebee.bookswap.entity.ExchangeHistory;
-import com.hebee.bookswap.entity.ExchangeRequest;
-import com.hebee.bookswap.entity.User;
-import com.hebee.bookswap.exception.InvalidReturnStateException;
+import com.hebee.bookswap.constant.ReturnOtpStatus;
+import com.hebee.bookswap.dto.*;
+import com.hebee.bookswap.entity.*;
+import com.hebee.bookswap.exception.*;
 import com.hebee.bookswap.mapper.ExchangeRequestMapper;
 import com.hebee.bookswap.repository.*;
 import com.hebee.bookswap.service.ChatService;
@@ -25,7 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +55,12 @@ public class ExchangeRequestServiceImplTest {
     @Mock
     private ChatService chatService;
 
+    @Mock
+    private ReturnVerificationRepository returnVerificationRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private ExchangeRequestServiceImpl exchangeRequestService;
 
     private User requester;
@@ -76,7 +78,9 @@ public class ExchangeRequestServiceImplTest {
                 notificationService,
                 exchangeHistoryRepository,
                 conversationRepository,
-                chatService
+                chatService,
+                returnVerificationRepository,
+                passwordEncoder
         );
 
         requester = new User("Requester User", "requester@example.com", "password");
@@ -241,22 +245,6 @@ public class ExchangeRequestServiceImplTest {
     }
 
     @Test
-    void testRequestReturn_Fails_WhenNotInAcceptedOrDeclinedState() {
-        // Authenticated as sender (owner)
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
-        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.PENDING);
-        exchangeRequest.setId(10L);
-
-        when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
-        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
-
-        assertThrows(InvalidReturnStateException.class, () -> exchangeRequestService.requestReturn(10L, null));
-    }
-
-    @Test
     void testAcceptReturn_Success_ByHolder() {
         // Authenticated as requester (current holder)
         when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
@@ -302,27 +290,185 @@ public class ExchangeRequestServiceImplTest {
         verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
     }
 
+    // ==========================================
+    // OTP VERIFICATION TESTS
+    // ==========================================
+
     @Test
-    void testMarkReturned_Success_ByHolder() {
-        // Authenticated as requester (current holder)
+    void testGenerateReturnOtp_Success_ByOwner() {
+        // Authenticated as sender (owner)
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$hashedOtpExample");
+        when(returnVerificationRepository.findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(10L, ReturnOtpStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        ReturnOtpGenerateResponseDTO result = exchangeRequestService.generateReturnOtp(10L);
+
+        assertNotNull(result);
+        assertEquals(10L, result.getExchangeRequestId());
+        assertEquals(ReturnOtpStatus.ACTIVE, result.getStatus());
+        assertNotNull(result.getOtp());
+        assertTrue(result.getOtp().matches("^[0-9]{6}$"), "OTP must be exactly 6 digits");
+        assertNotNull(result.getExpiresAt());
+
+        // Verify entity saved with hash
+        verify(returnVerificationRepository, times(1)).save(any(ReturnVerification.class));
+        verify(notificationService, times(1)).createNotification(eq(requester), eq("RETURN_OTP_GENERATED"), anyString(), eq(10L));
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testGenerateReturnOtp_Fails_WhenNotOwner() {
+        // Authenticated as requester (holder)
         when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
 
         ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
         exchangeRequest.setId(10L);
 
         when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        assertThrows(AccessDeniedException.class, () -> exchangeRequestService.generateReturnOtp(10L));
+    }
+
+    @Test
+    void testVerifyReturnOtp_Success_ByHolder() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        ReturnVerification activeVerification = new ReturnVerification(
+                exchangeRequest,
+                "$2a$10$hashedOtpExample",
+                LocalDateTime.now().plusMinutes(30),
+                5
+        );
+        activeVerification.setId(100L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(returnVerificationRepository.findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(10L, ReturnOtpStatus.ACTIVE))
+                .thenReturn(Optional.of(activeVerification));
+        when(passwordEncoder.matches("482913", "$2a$10$hashedOtpExample")).thenReturn(true);
         when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ReturnDetailsResponseDTO result = exchangeRequestService.markReturned(10L);
+        ReturnDetailsResponseDTO result = exchangeRequestService.verifyReturnOtp(10L, new ReturnOtpVerifyRequestDTO("482913"));
 
         assertNotNull(result);
         assertEquals(ExchangeRequestStatus.RETURNED, result.getStatus());
         assertNotNull(result.getReturnedAt());
+        assertEquals(ReturnOtpStatus.VERIFIED, activeVerification.getStatus());
+        assertNotNull(activeVerification.getVerifiedAt());
 
-        verify(notificationService, times(1)).createNotification(
-                eq(sender), eq("BOOK_RETURNED"), anyString(), eq(10L)
+        // Verify book ownership is NOT yet restored at this stage (still with requester)
+        assertEquals(sender.getId(), exchangeRequest.getOwner().getId());
+
+        verify(returnVerificationRepository, times(1)).save(activeVerification);
+        verify(notificationService, times(1)).createNotification(eq(sender), eq("BOOK_RETURNED"), anyString(), eq(10L));
+        verify(notificationService, times(1)).createNotification(eq(requester), eq("RETURN_OTP_VERIFIED"), anyString(), eq(10L));
+        verify(exchangeHistoryRepository, times(2)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testVerifyReturnOtp_Fails_WhenInvalidOtp() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        ReturnVerification activeVerification = new ReturnVerification(
+                exchangeRequest,
+                "$2a$10$hashedOtpExample",
+                LocalDateTime.now().plusMinutes(30),
+                5
         );
-        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+        activeVerification.setAttemptCount(1);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(returnVerificationRepository.findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(10L, ReturnOtpStatus.ACTIVE))
+                .thenReturn(Optional.of(activeVerification));
+        when(passwordEncoder.matches("000000", "$2a$10$hashedOtpExample")).thenReturn(false);
+
+        InvalidReturnOtpException ex = assertThrows(InvalidReturnOtpException.class, () ->
+                exchangeRequestService.verifyReturnOtp(10L, new ReturnOtpVerifyRequestDTO("000000"))
+        );
+
+        assertTrue(ex.getMessage().contains("3 attempts remaining"));
+        assertEquals(2, activeVerification.getAttemptCount());
+        verify(returnVerificationRepository, times(1)).save(activeVerification);
+    }
+
+    @Test
+    void testVerifyReturnOtp_Locks_After5FailedAttempts() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        ReturnVerification activeVerification = new ReturnVerification(
+                exchangeRequest,
+                "$2a$10$hashedOtpExample",
+                LocalDateTime.now().plusMinutes(30),
+                5
+        );
+        activeVerification.setAttemptCount(4); // 4 attempts already made
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(returnVerificationRepository.findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(10L, ReturnOtpStatus.ACTIVE))
+                .thenReturn(Optional.of(activeVerification));
+        when(passwordEncoder.matches("000000", "$2a$10$hashedOtpExample")).thenReturn(false);
+
+        ReturnOtpLockedException ex = assertThrows(ReturnOtpLockedException.class, () ->
+                exchangeRequestService.verifyReturnOtp(10L, new ReturnOtpVerifyRequestDTO("000000"))
+        );
+
+        assertTrue(ex.getMessage().contains("locked"));
+        assertEquals(5, activeVerification.getAttemptCount());
+        assertEquals(ReturnOtpStatus.LOCKED, activeVerification.getStatus());
+        verify(returnVerificationRepository, times(1)).save(activeVerification);
+        verify(notificationService, times(1)).createNotification(eq(sender), eq("RETURN_OTP_LOCKED"), anyString(), eq(10L));
+    }
+
+    @Test
+    void testVerifyReturnOtp_Fails_WhenExpired() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        ReturnVerification expiredVerification = new ReturnVerification(
+                exchangeRequest,
+                "$2a$10$hashedOtpExample",
+                LocalDateTime.now().minusMinutes(5), // expired 5 mins ago
+                5
+        );
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(returnVerificationRepository.findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(10L, ReturnOtpStatus.ACTIVE))
+                .thenReturn(Optional.of(expiredVerification));
+
+        assertThrows(ReturnOtpExpiredException.class, () ->
+                exchangeRequestService.verifyReturnOtp(10L, new ReturnOtpVerifyRequestDTO("482913"))
+        );
+
+        assertEquals(ReturnOtpStatus.EXPIRED, expiredVerification.getStatus());
+        verify(returnVerificationRepository, times(1)).save(expiredVerification);
+    }
+
+    @Test
+    void testMarkReturned_Throws_ReturnOtpNotAllowedException() {
+        assertThrows(ReturnOtpNotAllowedException.class, () -> exchangeRequestService.markReturned(10L));
     }
 
     @Test

@@ -5,6 +5,8 @@ import type {
   ReturnRequestCreate,
   ReturnDetailsResponse,
   ExchangeHistoryItem,
+  ReturnOtpGenerateResponse,
+  ReturnOtpVerifyRequest,
 } from '../types/swap';
 
 export const swapService = {
@@ -62,8 +64,14 @@ export const swapService = {
     return response.data;
   },
 
-  markReturned: async (id: number): Promise<ReturnDetailsResponse> => {
-    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return/mark-returned`);
+  generateReturnOtp: async (id: number): Promise<ReturnOtpGenerateResponse> => {
+    const response = await api.post<ReturnOtpGenerateResponse>(`/exchange-requests/${id}/return/otp/generate`);
+    return response.data;
+  },
+
+  verifyReturnOtp: async (id: number, otp: string): Promise<ReturnDetailsResponse> => {
+    const request: ReturnOtpVerifyRequest = { otp };
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return/otp/verify`, request);
     return response.data;
   },
 

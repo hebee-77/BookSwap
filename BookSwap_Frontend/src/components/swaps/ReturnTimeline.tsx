@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock, ArrowLeftRight, RotateCcw, PackageCheck, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, Clock, ArrowLeftRight, RotateCcw, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
 import type { ExchangeRequestStatus, ExchangeHistoryItem } from '../../types/swap';
 
 interface ReturnTimelineProps {
@@ -44,7 +44,7 @@ export const ReturnTimeline: React.FC<ReturnTimelineProps> = ({
   const tRequested = returnRequestedAt || getHistoryTime(['RETURN_REQUESTED']);
   const tAccepted = returnAcceptedAt || getHistoryTime(['RETURN_ACCEPTED', 'RETURN_STARTED']);
   const tDeclined = returnDeclinedAt || getHistoryTime(['RETURN_DECLINED']);
-  const tReturned = returnedAt || getHistoryTime(['BOOK_RETURNED']);
+  const tOtpVerified = returnedAt || getHistoryTime(['RETURN_OTP_VERIFIED', 'BOOK_RETURNED']);
   const tConfirmed = confirmedAt || getHistoryTime(['OWNER_CONFIRMED', 'EXCHANGE_COMPLETED']);
 
   // Build steps array
@@ -65,8 +65,6 @@ export const ReturnTimeline: React.FC<ReturnTimelineProps> = ({
       statusState:
         tRequested || ['RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURN_IN_PROGRESS', 'RETURNED', 'COMPLETED', 'RETURN_DECLINED'].includes(status)
           ? 'completed'
-          : status === 'ACCEPTED'
-          ? 'upcoming'
           : 'upcoming',
       icon: <RotateCcw className="h-4 w-4" />,
     },
@@ -85,7 +83,7 @@ export const ReturnTimeline: React.FC<ReturnTimelineProps> = ({
     steps.push({
       id: 'accepted',
       title: 'Return Accepted / In Progress',
-      description: 'Holder accepted request; book is being prepared/sent for return.',
+      description: 'Holder accepted request. Return is in progress.',
       timestamp: tAccepted,
       statusState:
         ['RETURN_ACCEPTED', 'RETURN_IN_PROGRESS', 'RETURNED', 'COMPLETED'].includes(status)
@@ -98,21 +96,21 @@ export const ReturnTimeline: React.FC<ReturnTimelineProps> = ({
 
     steps.push({
       id: 'returned',
-      title: 'Book Marked as Returned',
-      description: 'Holder returned the book and marked it in the system.',
-      timestamp: tReturned,
+      title: 'Physical Handover & OTP Verified',
+      description: 'Owner provided 6-digit code upon receipt; holder verified return.',
+      timestamp: tOtpVerified,
       statusState:
         ['RETURNED', 'COMPLETED'].includes(status)
           ? 'completed'
           : ['RETURN_ACCEPTED', 'RETURN_IN_PROGRESS'].includes(status)
           ? 'current'
           : 'upcoming',
-      icon: <PackageCheck className="h-4 w-4" />,
+      icon: <KeyRound className="h-4 w-4" />,
     });
 
     steps.push({
       id: 'completed',
-      title: 'Owner Confirmed & Completed',
+      title: 'Owner Confirmed & Ownership Restored',
       description: 'Owner confirmed receipt. Book ownership restored to original shelf.',
       timestamp: tConfirmed,
       statusState:

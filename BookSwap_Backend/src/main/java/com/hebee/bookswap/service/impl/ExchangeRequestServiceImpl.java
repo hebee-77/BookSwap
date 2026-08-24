@@ -2,34 +2,36 @@ package com.hebee.bookswap.service.impl;
 
 import com.hebee.bookswap.constant.ExchangeEventType;
 import com.hebee.bookswap.constant.ExchangeRequestStatus;
+import com.hebee.bookswap.constant.ReturnOtpStatus;
 import com.hebee.bookswap.dto.*;
 import com.hebee.bookswap.entity.*;
-import com.hebee.bookswap.exception.InvalidReturnStateException;
-import com.hebee.bookswap.exception.ResourceNotFoundException;
-import com.hebee.bookswap.exception.ReturnRequestNotAllowedException;
+import com.hebee.bookswap.exception.*;
 import com.hebee.bookswap.mapper.ExchangeRequestMapper;
-import com.hebee.bookswap.repository.BookRepository;
-import com.hebee.bookswap.repository.ConversationRepository;
-import com.hebee.bookswap.repository.ExchangeHistoryRepository;
-import com.hebee.bookswap.repository.ExchangeRequestRepository;
-import com.hebee.bookswap.repository.UserRepository;
+import com.hebee.bookswap.repository.*;
 import com.hebee.bookswap.service.ChatService;
 import com.hebee.bookswap.service.ExchangeRequestService;
 import com.hebee.bookswap.service.NotificationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 @SuppressWarnings("null")
 public class ExchangeRequestServiceImpl implements ExchangeRequestService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final ExchangeRequestRepository exchangeRequestRepository;
     private final UserRepository userRepository;
@@ -39,6 +41,17 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     private final ExchangeHistoryRepository exchangeHistoryRepository;
     private final ConversationRepository conversationRepository;
     private final ChatService chatService;
+    private final ReturnVerificationRepository returnVerificationRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${bookswap.return.otp.expiration-minutes:30}")
+    private int otpExpirationMinutes = 30;
+
+    @Value("${bookswap.return.otp.max-attempts:5}")
+    private int otpMaxAttempts = 5;
+
+    @Value("${bookswap.return.otp.cooldown-seconds:30}")
+    private int otpCooldownSeconds = 30;
 
     public ExchangeRequestServiceImpl(ExchangeRequestRepository exchangeRequestRepository,
                                       UserRepository userRepository,
@@ -47,7 +60,9 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                                       NotificationService notificationService,
                                       ExchangeHistoryRepository exchangeHistoryRepository,
                                       ConversationRepository conversationRepository,
-                                      @Lazy ChatService chatService) {
+                                      @Lazy ChatService chatService,
+                                      ReturnVerificationRepository returnVerificationRepository,
+                                      PasswordEncoder passwordEncoder) {
         this.exchangeRequestRepository = exchangeRequestRepository;
         this.userRepository = userRepository;
         this.bookRepository = bookRepository;
@@ -56,6 +71,8 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         this.exchangeHistoryRepository = exchangeHistoryRepository;
         this.conversationRepository = conversationRepository;
         this.chatService = chatService;
+        this.returnVerificationRepository = returnVerificationRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     private User getAuthenticatedUser() {
@@ -78,6 +95,11 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         } catch (Exception e) {
             // Non-blocking: chat message failure should not abort exchange transaction
         }
+    }
+
+    private String generateSecureOtp() {
+        int number = SECURE_RANDOM.nextInt(900000) + 100000; // Guarantees exactly 6 digits: 100000 to 999999
+        return String.valueOf(number);
     }
 
     @Override
@@ -407,41 +429,195 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         return mapToReturnDetails(saved, currentUser);
     }
 
+    // ==========================================
+    // SECURE OTP-BASED PHYSICAL RETURN VERIFICATION
+    // ==========================================
+
     @Override
-    public ReturnDetailsResponseDTO markReturned(Long exchangeId) {
+    public ReturnOtpGenerateResponseDTO generateReturnOtp(Long exchangeId) {
         ExchangeRequest exchange = exchangeRequestRepository.findById(exchangeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
         User currentUser = getAuthenticatedUser();
 
-        User holder = exchange.getRequester();
-        if (!holder.getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Only the current book holder can mark the book as returned");
+        // 1. Authorization: Original book owner only
+        User owner = exchange.getOwner();
+        if (owner == null || !owner.getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the original book owner can generate a return verification code.");
         }
 
+        // 2. State validation: Must be in RETURN_IN_PROGRESS or RETURN_ACCEPTED
         if (exchange.getStatus() != ExchangeRequestStatus.RETURN_IN_PROGRESS &&
             exchange.getStatus() != ExchangeRequestStatus.RETURN_ACCEPTED) {
-            throw new InvalidReturnStateException("Book can only be marked as returned when return is in progress");
+            throw new InvalidReturnStateException("Return code can only be generated when return is in progress.");
         }
 
+        // 3. Cooldown verification: Prevent rapid repeated generation
+        Optional<ReturnVerification> activeOtpOpt = returnVerificationRepository
+                .findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(exchangeId, ReturnOtpStatus.ACTIVE);
+
+        boolean isRegeneration = activeOtpOpt.isPresent();
+
+        if (activeOtpOpt.isPresent()) {
+            ReturnVerification active = activeOtpOpt.get();
+            long secondsSinceGenerated = Duration.between(active.getGeneratedAt(), LocalDateTime.now()).getSeconds();
+            if (secondsSinceGenerated < otpCooldownSeconds) {
+                long waitRemaining = otpCooldownSeconds - secondsSinceGenerated;
+                throw new ReturnOtpNotAllowedException(
+                    String.format("Please wait %d seconds before generating a new return verification code.", waitRemaining)
+                );
+            }
+            // Invalidate the previous active OTP
+            active.setStatus(ReturnOtpStatus.EXPIRED);
+            returnVerificationRepository.save(active);
+        }
+
+        // Invalidate any other active verifications for safety
+        List<ReturnVerification> activeList = returnVerificationRepository.findByExchangeRequestIdAndStatus(exchangeId, ReturnOtpStatus.ACTIVE);
+        for (ReturnVerification rv : activeList) {
+            rv.setStatus(ReturnOtpStatus.EXPIRED);
+            returnVerificationRepository.save(rv);
+        }
+
+        // 4. Generate 6-digit numeric OTP via SecureRandom
+        String rawOtp = generateSecureOtp();
+        String otpHash = passwordEncoder.encode(rawOtp);
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(otpExpirationMinutes);
+
+        // 5. Store hashed OTP in return_verifications
+        ReturnVerification newVerification = new ReturnVerification(exchange, otpHash, expiresAt, otpMaxAttempts);
+        returnVerificationRepository.save(newVerification);
+
+        // 6. Record audit event (NEVER log the raw OTP)
+        ExchangeEventType eventType = isRegeneration ? ExchangeEventType.RETURN_OTP_REGENERATED : ExchangeEventType.RETURN_OTP_GENERATED;
+        String eventNote = isRegeneration
+                ? "Owner regenerated return verification code (valid for " + otpExpirationMinutes + " minutes)"
+                : "Owner generated return verification code (valid for " + otpExpirationMinutes + " minutes)";
+        recordHistory(exchange, currentUser, eventType, eventNote);
+
+        // 7. Notify holder (NEVER include raw OTP)
+        notificationService.createNotification(
+            exchange.getRequester(),
+            "RETURN_OTP_GENERATED",
+            String.format("The owner generated a return verification code for \"%s\". Please enter the code after receiving/returning the book.", exchange.getBook().getTitle()),
+            exchange.getId()
+        );
+
+        // 8. Return response containing OTP exclusively to the authenticated owner
+        return new ReturnOtpGenerateResponseDTO(exchangeId, ReturnOtpStatus.ACTIVE, rawOtp, expiresAt);
+    }
+
+    @Override
+    public ReturnDetailsResponseDTO verifyReturnOtp(Long exchangeId, ReturnOtpVerifyRequestDTO request) {
+        ExchangeRequest exchange = exchangeRequestRepository.findById(exchangeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
+        User currentUser = getAuthenticatedUser();
+
+        // 1. Authorization: Current book holder only
+        User holder = exchange.getRequester();
+        if (holder == null || !holder.getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the current book holder can verify the return code.");
+        }
+
+        // 2. State validation: Must be RETURN_IN_PROGRESS or RETURN_ACCEPTED
+        if (exchange.getStatus() != ExchangeRequestStatus.RETURN_IN_PROGRESS &&
+            exchange.getStatus() != ExchangeRequestStatus.RETURN_ACCEPTED) {
+            throw new InvalidReturnStateException("Return verification can only be performed when return is in progress.");
+        }
+
+        // 3. Format validation
+        if (request == null || request.getOtp() == null || !request.getOtp().trim().matches("^[0-9]{6}$")) {
+            throw new InvalidReturnOtpException("Verification code must be exactly 6 digits.");
+        }
+
+        // 4. Find active verification
+        ReturnVerification verification = returnVerificationRepository
+                .findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(exchangeId, ReturnOtpStatus.ACTIVE)
+                .orElseThrow(() -> new ReturnOtpNotFoundException("No active return verification code found. Please ask the owner to generate a code."));
+
+        // 5. Expiration check
+        if (LocalDateTime.now().isAfter(verification.getExpiresAt())) {
+            verification.setStatus(ReturnOtpStatus.EXPIRED);
+            returnVerificationRepository.save(verification);
+            recordHistory(exchange, currentUser, ExchangeEventType.RETURN_OTP_EXPIRED, "Return verification code expired");
+            throw new ReturnOtpExpiredException("Verification code has expired. Please ask the owner to generate a new code.");
+        }
+
+        // 6. Lock check
+        if (verification.getStatus() == ReturnOtpStatus.LOCKED || verification.getAttemptCount() >= verification.getMaxAttempts()) {
+            throw new ReturnOtpLockedException("Return verification code is locked after too many failed attempts. Please ask the owner to generate a new code.");
+        }
+
+        // 7. Verify hash
+        boolean matches = passwordEncoder.matches(request.getOtp().trim(), verification.getOtpHash());
+
+        if (!matches) {
+            int newAttemptCount = verification.getAttemptCount() + 1;
+            verification.setAttemptCount(newAttemptCount);
+
+            if (newAttemptCount >= verification.getMaxAttempts()) {
+                verification.setStatus(ReturnOtpStatus.LOCKED);
+                returnVerificationRepository.save(verification);
+
+                recordHistory(exchange, currentUser, ExchangeEventType.RETURN_OTP_LOCKED, "Return verification code locked due to maximum failed attempts");
+
+                // Notify owner that code was locked
+                notificationService.createNotification(
+                    exchange.getOwner(),
+                    "RETURN_OTP_LOCKED",
+                    String.format("The return verification code for \"%s\" was locked after %d failed attempts.", exchange.getBook().getTitle(), verification.getMaxAttempts()),
+                    exchange.getId()
+                );
+
+                throw new ReturnOtpLockedException("Too many incorrect attempts. The return code is locked. Please ask the owner to generate a new code.");
+            }
+
+            returnVerificationRepository.save(verification);
+            int remaining = verification.getMaxAttempts() - newAttemptCount;
+            throw new InvalidReturnOtpException(
+                String.format("Incorrect verification code. %d attempt%s remaining.", remaining, remaining == 1 ? "" : "s")
+            );
+        }
+
+        // 8. Success: Mark verification as VERIFIED
+        verification.setStatus(ReturnOtpStatus.VERIFIED);
+        verification.setVerifiedAt(LocalDateTime.now());
+        returnVerificationRepository.save(verification);
+
+        // 9. Transition exchange state to RETURNED
         exchange.setStatus(ExchangeRequestStatus.RETURNED);
         exchange.setReturnedAt(LocalDateTime.now());
 
         ExchangeRequest saved = exchangeRequestRepository.save(exchange);
 
-        recordHistory(saved, currentUser, ExchangeEventType.BOOK_RETURNED, "Holder marked the book as returned");
+        // 10. Audit history
+        recordHistory(saved, currentUser, ExchangeEventType.RETURN_OTP_VERIFIED, "Return code verified successfully by holder");
+        recordHistory(saved, currentUser, ExchangeEventType.BOOK_RETURNED, "Book handed over and marked as returned via physical OTP verification");
 
-        // Notify owner
+        // 11. Notifications
         User owner = exchange.getOwner();
         notificationService.createNotification(
             owner,
             "BOOK_RETURNED",
-            String.format("%s marked \"%s\" as returned. Please confirm receipt once received.", currentUser.getName(), exchange.getBook().getTitle()),
+            String.format("%s entered the correct return code. Please confirm receipt of \"%s\" once received.", currentUser.getName(), exchange.getBook().getTitle()),
             saved.getId()
         );
 
-        sendChatSystemNotification(saved.getId(), "Book \"" + exchange.getBook().getTitle() + "\" marked as returned by " + currentUser.getName() + ". Awaiting owner confirmation.");
+        notificationService.createNotification(
+            currentUser,
+            "RETURN_OTP_VERIFIED",
+            String.format("Return code verified successfully for \"%s\". Awaiting owner receipt confirmation.", exchange.getBook().getTitle()),
+            saved.getId()
+        );
+
+        sendChatSystemNotification(saved.getId(), "Physical return verified via code! Book \"" + exchange.getBook().getTitle() + "\" is marked as returned. Awaiting owner receipt confirmation.");
 
         return mapToReturnDetails(saved, currentUser);
+    }
+
+    @Override
+    public ReturnDetailsResponseDTO markReturned(Long exchangeId) {
+        // Direct unverified mark-returned is deprecated and disallowed
+        throw new ReturnOtpNotAllowedException("Direct return marking is disabled. Physical book return requires 6-digit OTP verification provided by the book owner.");
     }
 
     @Override
@@ -456,7 +632,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         }
 
         if (exchange.getStatus() != ExchangeRequestStatus.RETURNED) {
-            throw new InvalidReturnStateException("Cannot confirm receipt: book has not yet been marked as returned");
+            throw new InvalidReturnStateException("Cannot confirm receipt: book has not yet been marked as returned via OTP verification");
         }
 
         // 1. Restore primary book ownership to the original owner
@@ -575,6 +751,14 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         dto.setConfirmedAt(exchange.getConfirmedAt());
         dto.setReturnMessage(exchange.getReturnMessage());
 
+        // Check active OTP metadata
+        Optional<ReturnVerification> activeOtpOpt = returnVerificationRepository
+                .findFirstByExchangeRequestIdAndStatusOrderByCreatedAtDesc(exchange.getId(), ReturnOtpStatus.ACTIVE);
+
+        boolean hasActiveOtp = activeOtpOpt.isPresent() && !LocalDateTime.now().isAfter(activeOtpOpt.get().getExpiresAt());
+        dto.setHasActiveReturnOtp(hasActiveOtp);
+        dto.setReturnOtpExpiresAt(hasActiveOtp ? activeOtpOpt.get().getExpiresAt() : null);
+
         // Derive allowed actions for currentUser
         boolean isOwner = exchange.getOwner() != null && exchange.getOwner().getId().equals(currentUser.getId());
         boolean isHolder = exchange.getRequester() != null && exchange.getRequester().getId().equals(currentUser.getId());
@@ -583,7 +767,8 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         dto.setCanRequestReturn(isOwner && (s == ExchangeRequestStatus.ACCEPTED || s == ExchangeRequestStatus.RETURN_DECLINED));
         dto.setCanAcceptReturn(isHolder && s == ExchangeRequestStatus.RETURN_REQUESTED);
         dto.setCanDeclineReturn(isHolder && s == ExchangeRequestStatus.RETURN_REQUESTED);
-        dto.setCanMarkReturned(isHolder && (s == ExchangeRequestStatus.RETURN_IN_PROGRESS || s == ExchangeRequestStatus.RETURN_ACCEPTED));
+        dto.setCanGenerateReturnOtp(isOwner && (s == ExchangeRequestStatus.RETURN_IN_PROGRESS || s == ExchangeRequestStatus.RETURN_ACCEPTED));
+        dto.setCanVerifyReturnOtp(isHolder && (s == ExchangeRequestStatus.RETURN_IN_PROGRESS || s == ExchangeRequestStatus.RETURN_ACCEPTED));
         dto.setCanConfirmReceived(isOwner && s == ExchangeRequestStatus.RETURNED);
 
         // Map audit history
