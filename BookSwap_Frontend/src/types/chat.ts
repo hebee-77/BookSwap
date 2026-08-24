@@ -1,3 +1,5 @@
+import type { ExchangeRequestStatus } from './swap';
+
 export type MessageType = 'TEXT' | 'IMAGE' | 'SYSTEM';
 export type MessageStatus = 'SENT' | 'DELIVERED' | 'READ';
 
@@ -9,7 +11,7 @@ export interface UserSummary {
 
 export interface ExchangeContext {
   id: number;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: ExchangeRequestStatus;
   bookId: number;
   bookTitle: string;
   bookAuthor: string;

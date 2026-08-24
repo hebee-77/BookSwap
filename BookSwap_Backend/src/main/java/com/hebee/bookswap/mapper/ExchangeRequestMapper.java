@@ -48,6 +48,13 @@ public class ExchangeRequestMapper {
         }
         response.setStatus(exchangeRequest.getStatus());
         response.setCreatedAt(exchangeRequest.getCreatedAt());
+        response.setReturnRequestedAt(exchangeRequest.getReturnRequestedAt());
+        response.setReturnAcceptedAt(exchangeRequest.getReturnAcceptedAt());
+        response.setReturnDeclinedAt(exchangeRequest.getReturnDeclinedAt());
+        response.setReturnStartedAt(exchangeRequest.getReturnStartedAt());
+        response.setReturnedAt(exchangeRequest.getReturnedAt());
+        response.setConfirmedAt(exchangeRequest.getConfirmedAt());
+        response.setReturnMessage(exchangeRequest.getReturnMessage());
         return response;
     }
 }

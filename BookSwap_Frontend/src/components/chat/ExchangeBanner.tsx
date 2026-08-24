@@ -1,12 +1,26 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeftRight, Check, X, BookOpen, ExternalLink, ShieldCheck } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Check,
+  X,
+  BookOpen,
+  ExternalLink,
+  ShieldCheck,
+  RotateCcw,
+  PackageCheck,
+  CheckCircle2,
+  History,
+} from 'lucide-react';
 import { Button } from '../ui/button';
 import { swapService } from '../../services/swapService';
 import { toast } from 'sonner';
 import type { ExchangeContext } from '../../types/chat';
 import { useAuth } from '../../hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import { SwapStatusBadge } from '../swaps/SwapStatusBadge';
+import { ReturnActionDialog, type ReturnActionType } from '../swaps/ReturnActionDialog';
+import { ReturnDetailsModal } from '../swaps/ReturnDetailsModal';
 
 interface ExchangeBannerProps {
   exchange: ExchangeContext;
@@ -20,17 +34,22 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [returnAction, setReturnAction] = useState<ReturnActionType | null>(null);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
 
   const isOwner = user?.id === exchange.ownerId;
+  const isHolder = user?.id === exchange.requesterId;
   const isPending = exchange.status === 'PENDING';
 
-  const handleAccept = async () => {
+  const handleAcceptSwap = async () => {
     try {
       setIsUpdating(true);
       await swapService.acceptRequest(exchange.id);
-      toast.success('Exchange request accepted!');
+      toast.success('Exchange request accepted! Book transferred.');
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['user-books'] });
       onStatusUpdated?.();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to accept exchange request');
@@ -39,7 +58,7 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
     }
   };
 
-  const handleReject = async () => {
+  const handleRejectSwap = async () => {
     try {
       setIsUpdating(true);
       await swapService.rejectRequest(exchange.id);
@@ -53,12 +72,6 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
       setIsUpdating(false);
     }
   };
-
-  const statusBadgeColor = {
-    PENDING: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    ACCEPTED: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    REJECTED: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-  }[exchange.status] || 'bg-muted text-muted-foreground border-border';
 
   return (
     <div className="border-b border-border/80 bg-card/60 backdrop-blur px-4 py-3 shadow-xs">
@@ -81,13 +94,9 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                 <ArrowLeftRight className="h-3 w-3 text-primary" />
-                Book Swap Context
+                Swap Context
               </span>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadgeColor}`}
-              >
-                {exchange.status}
-              </span>
+              <SwapStatusBadge status={exchange.status} />
             </div>
 
             <h4 className="text-sm font-bold text-foreground truncate mt-0.5">
@@ -105,7 +114,7 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center w-full sm:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center w-full sm:w-auto justify-end">
           <Link to={`/books/${exchange.bookId}`} target="_blank">
             <Button
               variant="outline"
@@ -113,17 +122,31 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
               className="h-8 text-xs gap-1 font-medium border-border/80 hover:bg-muted"
             >
               <ExternalLink className="h-3 w-3" />
-              <span>View Book</span>
+              <span>Book</span>
             </Button>
           </Link>
 
+          {/* Timeline View button */}
+          {exchange.status !== 'PENDING' && exchange.status !== 'REJECTED' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTimelineModal(true)}
+              className="h-8 text-xs gap-1 font-medium border-border/80 hover:bg-muted"
+            >
+              <History className="h-3 w-3 text-primary" />
+              <span>Timeline</span>
+            </Button>
+          )}
+
+          {/* Pending Exchange Acceptance */}
           {isOwner && isPending && (
             <>
               <Button
                 size="sm"
                 variant="destructive"
                 className="h-8 text-xs gap-1 font-semibold"
-                onClick={handleReject}
+                onClick={handleRejectSwap}
                 disabled={isUpdating}
               >
                 <X className="h-3.5 w-3.5" />
@@ -132,7 +155,7 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
               <Button
                 size="sm"
                 className="h-8 text-xs gap-1 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={handleAccept}
+                onClick={handleAcceptSwap}
                 disabled={isUpdating}
               >
                 <Check className="h-3.5 w-3.5" />
@@ -147,8 +170,87 @@ export const ExchangeBanner: React.FC<ExchangeBannerProps> = ({
               Awaiting owner response
             </span>
           )}
+
+          {/* Return Workflow Actions in Chat */}
+          {isOwner && (exchange.status === 'ACCEPTED' || exchange.status === 'RETURN_DECLINED') && (
+            <Button
+              size="sm"
+              onClick={() => setReturnAction('request_return')}
+              className="h-8 text-xs gap-1 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Request Back</span>
+            </Button>
+          )}
+
+          {isHolder && exchange.status === 'RETURN_REQUESTED' && (
+            <>
+              <Button
+                size="sm"
+                onClick={() => setReturnAction('accept_return')}
+                className="h-8 text-xs gap-1 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>Accept Return</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setReturnAction('decline_return')}
+                className="h-8 text-xs gap-1 font-semibold"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>Decline</span>
+              </Button>
+            </>
+          )}
+
+          {isHolder && (exchange.status === 'RETURN_ACCEPTED' || exchange.status === 'RETURN_IN_PROGRESS') && (
+            <Button
+              size="sm"
+              onClick={() => setReturnAction('mark_returned')}
+              className="h-8 text-xs gap-1 font-semibold bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <PackageCheck className="h-3.5 w-3.5" />
+              <span>Mark as Returned</span>
+            </Button>
+          )}
+
+          {isOwner && exchange.status === 'RETURNED' && (
+            <Button
+              size="sm"
+              onClick={() => setReturnAction('confirm_received')}
+              className="h-8 text-xs gap-1 font-semibold bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Confirm Receipt</span>
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Return Action Dialog */}
+      {returnAction && (
+        <ReturnActionDialog
+          isOpen={!!returnAction}
+          onClose={() => setReturnAction(null)}
+          exchangeId={exchange.id}
+          bookTitle={exchange.bookTitle}
+          actionType={returnAction}
+          onSuccess={() => {
+            onStatusUpdated?.();
+          }}
+        />
+      )}
+
+      {/* Timeline Modal */}
+      {showTimelineModal && (
+        <ReturnDetailsModal
+          isOpen={showTimelineModal}
+          onClose={() => setShowTimelineModal(false)}
+          exchangeId={exchange.id}
+        />
+      )}
     </div>
   );
 };

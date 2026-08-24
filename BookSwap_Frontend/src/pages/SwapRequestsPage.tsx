@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, ArrowLeftRight, Inbox, Send, History } from 'lucide-react';
+import { Loader2, ArrowLeftRight, Inbox, Send, History, RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { swapService } from '../services/swapService';
 import { bookService } from '../services/bookService';
@@ -12,6 +12,7 @@ type TabType = 'received' | 'sent' | 'history';
 export const SwapRequestsPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
+  const [historyFilter, setHistoryFilter] = useState<'ALL' | 'ACTIVE_RETURNS' | 'COMPLETED'>('ALL');
 
   // Fetch all requests in the system
   const { data: allRequests = [], isLoading: isLoadingAll } = useQuery({
@@ -46,7 +47,7 @@ export const SwapRequestsPage: React.FC = () => {
   const pendingReceived = receivedRequests.filter((req) => req.status === 'PENDING');
   const pendingSent = sentRequests.filter((req) => req.status === 'PENDING');
 
-  // History: any swap involving user that is accepted/rejected
+  // History: any swap involving user that is accepted/rejected/return
   const historyRequests = allRequests
     .filter(
       (req) =>
@@ -54,6 +55,30 @@ export const SwapRequestsPage: React.FC = () => {
         (req.requesterId === user?.id || req.ownerId === user?.id || userBookIds.has(req.bookId))
     )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Count active returns requiring action
+  const activeReturnsCount = historyRequests.filter(
+    (req) =>
+      req.status === 'RETURN_REQUESTED' ||
+      req.status === 'RETURN_ACCEPTED' ||
+      req.status === 'RETURN_IN_PROGRESS' ||
+      req.status === 'RETURNED'
+  ).length;
+
+  const filteredHistory = historyRequests.filter((req) => {
+    if (historyFilter === 'ACTIVE_RETURNS') {
+      return (
+        req.status === 'RETURN_REQUESTED' ||
+        req.status === 'RETURN_ACCEPTED' ||
+        req.status === 'RETURN_IN_PROGRESS' ||
+        req.status === 'RETURNED'
+      );
+    }
+    if (historyFilter === 'COMPLETED') {
+      return req.status === 'COMPLETED';
+    }
+    return true;
+  });
 
   const isLoading = isLoadingAll || isLoadingSent || isLoadingUserBooks;
 
@@ -72,8 +97,9 @@ export const SwapRequestsPage: React.FC = () => {
     },
     {
       id: 'history',
-      label: 'Exchange History',
+      label: 'Exchanges & Returns',
       icon: <History className="h-4 w-4" />,
+      count: activeReturnsCount > 0 ? activeReturnsCount : undefined,
     },
   ];
 
@@ -83,10 +109,10 @@ export const SwapRequestsPage: React.FC = () => {
       <div className="border-b border-border pb-6 mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl flex items-center gap-2">
           <ArrowLeftRight className="h-8 w-8 text-primary" />
-          <span>Book Exchanges</span>
+          <span>Book Exchanges & Returns</span>
         </h1>
         <p className="text-muted-foreground mt-1">
-          Review, propose, and track your active book swaps.
+          Review proposals, manage book loans, request books back, and confirm returns.
         </p>
       </div>
 
@@ -107,9 +133,11 @@ export const SwapRequestsPage: React.FC = () => {
               {tab.icon}
               <span>{tab.label}</span>
               {tab.count !== undefined && tab.count > 0 && (
-                <span className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold h-5 px-1.5 leading-none transition-colors ${
-                  isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
+                <span
+                  className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold h-5 px-1.5 leading-none transition-colors ${
+                    isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
                   {tab.count}
                 </span>
               )}
@@ -122,12 +150,14 @@ export const SwapRequestsPage: React.FC = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
-          <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading exchange logs...</p>
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">
+            Loading exchange logs...
+          </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {activeTab === 'received' && (
-            pendingReceived.length === 0 ? (
+          {activeTab === 'received' &&
+            (pendingReceived.length === 0 ? (
               <EmptySwapRequests type="received" />
             ) : (
               <div className="space-y-4">
@@ -135,11 +165,10 @@ export const SwapRequestsPage: React.FC = () => {
                   <SwapRequestCard key={req.id} request={req} />
                 ))}
               </div>
-            )
-          )}
+            ))}
 
-          {activeTab === 'sent' && (
-            pendingSent.length === 0 ? (
+          {activeTab === 'sent' &&
+            (pendingSent.length === 0 ? (
               <EmptySwapRequests type="sent" />
             ) : (
               <div className="space-y-4">
@@ -147,19 +176,47 @@ export const SwapRequestsPage: React.FC = () => {
                   <SwapRequestCard key={req.id} request={req} />
                 ))}
               </div>
-            )
-          )}
+            ))}
 
           {activeTab === 'history' && (
-            historyRequests.length === 0 ? (
-              <EmptySwapRequests type="history" />
-            ) : (
-              <div className="space-y-4">
-                {historyRequests.map((req) => (
-                  <SwapRequestCard key={req.id} request={req} />
-                ))}
+            <div className="space-y-4">
+              {/* Sub-filter for history */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground">Filter History:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(['ALL', 'ACTIVE_RETURNS', 'COMPLETED'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setHistoryFilter(filter)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all ${
+                        historyFilter === filter
+                          ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                          : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {filter === 'ALL'
+                        ? 'All History'
+                        : filter === 'ACTIVE_RETURNS'
+                        ? `Active Returns (${activeReturnsCount})`
+                        : 'Completed Returns'}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )
+
+              {filteredHistory.length === 0 ? (
+                <EmptySwapRequests type="history" />
+              ) : (
+                <div className="space-y-4">
+                  {filteredHistory.map((req) => (
+                    <SwapRequestCard key={req.id} request={req} />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

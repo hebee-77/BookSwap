@@ -1,5 +1,11 @@
 import api from './api';
-import type { ExchangeRequest, ExchangeRequestCreate } from '../types/swap';
+import type {
+  ExchangeRequest,
+  ExchangeRequestCreate,
+  ReturnRequestCreate,
+  ReturnDetailsResponse,
+  ExchangeHistoryItem,
+} from '../types/swap';
 
 export const swapService = {
   createRequest: async (request: ExchangeRequestCreate): Promise<ExchangeRequest> => {
@@ -34,6 +40,45 @@ export const swapService = {
 
   rejectRequest: async (id: number): Promise<ExchangeRequest> => {
     const response = await api.put<ExchangeRequest>(`/exchange-requests/${id}/reject`);
+    return response.data;
+  },
+
+  // ==========================================
+  // RETURN WORKFLOW APIS
+  // ==========================================
+
+  requestReturn: async (id: number, request?: ReturnRequestCreate): Promise<ReturnDetailsResponse> => {
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return-request`, request || {});
+    return response.data;
+  },
+
+  acceptReturn: async (id: number): Promise<ReturnDetailsResponse> => {
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return-request/accept`);
+    return response.data;
+  },
+
+  declineReturn: async (id: number, request?: ReturnRequestCreate): Promise<ReturnDetailsResponse> => {
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return-request/decline`, request || {});
+    return response.data;
+  },
+
+  markReturned: async (id: number): Promise<ReturnDetailsResponse> => {
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return/mark-returned`);
+    return response.data;
+  },
+
+  confirmReceived: async (id: number): Promise<ReturnDetailsResponse> => {
+    const response = await api.post<ReturnDetailsResponse>(`/exchange-requests/${id}/return/confirm`);
+    return response.data;
+  },
+
+  getReturnDetails: async (id: number): Promise<ReturnDetailsResponse> => {
+    const response = await api.get<ReturnDetailsResponse>(`/exchange-requests/${id}/return`);
+    return response.data;
+  },
+
+  getExchangeHistory: async (id: number): Promise<ExchangeHistoryItem[]> => {
+    const response = await api.get<ExchangeHistoryItem[]>(`/exchange-requests/${id}/history`);
     return response.data;
   },
 };

@@ -3,7 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { BookMarked, ArrowLeftRight, User, Calendar, Check, X, AlertTriangle, MessageSquare, Star } from 'lucide-react';
+import {
+  BookMarked,
+  ArrowLeftRight,
+  User,
+  Calendar,
+  Check,
+  X,
+  AlertTriangle,
+  MessageSquare,
+  Star,
+  RotateCcw,
+  PackageCheck,
+  CheckCircle2,
+  History,
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
 import { swapService } from '../../services/swapService';
@@ -15,6 +29,8 @@ import { Button } from '../ui/button';
 import { reviewService } from '../../services/reviewService';
 import { ReviewDialog } from '../reviews/ReviewDialog';
 import { BookCover } from '../books/BookCover';
+import { ReturnActionDialog, type ReturnActionType } from './ReturnActionDialog';
+import { ReturnDetailsModal } from './ReturnDetailsModal';
 
 interface SwapRequestCardProps {
   request: ExchangeRequest;
@@ -26,6 +42,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState<'accept' | 'reject' | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [returnAction, setReturnAction] = useState<ReturnActionType | null>(null);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
 
   // Fetch reviews written by the user to check eligibility
   const { data: myReviews = [] } = useQuery({
@@ -106,12 +124,22 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   });
 
   const isOutgoing = user?.id === request.requesterId;
-  const isIncoming = (request.ownerId && user?.id === request.ownerId) || (requestedBook && user?.id === requestedBook.ownerId);
+  const isIncoming =
+    (request.ownerId && user?.id === request.ownerId) ||
+    (requestedBook && user?.id === requestedBook.ownerId && request.status === 'PENDING');
   const isPending = request.status === 'PENDING';
-  
+
+  // Role identities across return lifecycle
+  const isOriginalOwner = user?.id === request.ownerId;
+  const isCurrentHolder = user?.id === request.requesterId;
+
   const hasReviewed = myReviews.some((r) => r.exchangeRequestId === request.id);
-  const isParticipant = user && (request.requesterId === user.id || (request.ownerId && request.ownerId === user.id) || (requestedBook && requestedBook.ownerId === user.id));
-  const canReview = request.status === 'ACCEPTED' && isParticipant && !hasReviewed;
+  const isParticipant =
+    user &&
+    (request.requesterId === user.id ||
+      (request.ownerId && request.ownerId === user.id) ||
+      (requestedBook && requestedBook.ownerId === user.id));
+  const canReview = (request.status === 'ACCEPTED' || request.status === 'COMPLETED') && isParticipant && !hasReviewed;
 
   const getConditionStyles = (condition: string) => {
     switch (condition) {
@@ -146,6 +174,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     );
   }
 
+  const bookTitle = requestedBook?.title || 'Book';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -156,14 +186,16 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
       <Card className="border border-border bg-card shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
         {/* Header Ribbon for Incoming/Outgoing */}
         <div className={`h-1 w-full ${isOutgoing ? 'bg-sky-500' : 'bg-primary'}`} />
-        
+
         <CardHeader className="p-5 pb-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                isOutgoing ? 'bg-sky-500/10 text-sky-600' : 'bg-primary/10 text-primary'
-              }`}>
-                {isOutgoing ? 'Sent Request' : 'Received Request'}
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                  isOutgoing ? 'bg-sky-500/10 text-sky-600' : 'bg-primary/10 text-primary'
+                }`}
+              >
+                {isOutgoing ? 'Sent Proposal' : 'Received Proposal'}
               </span>
               <span className="text-xs text-muted-foreground font-semibold">ID #{request.id}</span>
             </div>
@@ -181,12 +213,22 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               {requestedBook ? (
                 <div className="flex items-start gap-2.5">
                   <div className="h-12 w-9 shrink-0">
-                    <BookCover imageUrl={requestedBook.imageUrl} title={requestedBook.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                    <BookCover
+                      imageUrl={requestedBook.imageUrl}
+                      title={requestedBook.title}
+                      aspect="portrait"
+                      size="xs"
+                      className="h-12 w-9"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{requestedBook.title}</p>
                     <p className="text-xs text-muted-foreground truncate">by {requestedBook.author}</p>
-                    <span className={`inline-flex items-center rounded-full border px-1.5 py-0.2 text-[9px] font-semibold uppercase mt-1 ${getConditionStyles(requestedBook.bookCondition)}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-1.5 py-0.2 text-[9px] font-semibold uppercase mt-1 ${getConditionStyles(
+                        requestedBook.bookCondition
+                      )}`}
+                    >
                       {requestedBook.bookCondition}
                     </span>
                   </div>
@@ -211,12 +253,22 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               {offeredBook ? (
                 <div className="flex items-start gap-2.5">
                   <div className="h-12 w-9 shrink-0">
-                    <BookCover imageUrl={offeredBook.imageUrl} title={offeredBook.title} aspect="portrait" size="xs" className="h-12 w-9" />
+                    <BookCover
+                      imageUrl={offeredBook.imageUrl}
+                      title={offeredBook.title}
+                      aspect="portrait"
+                      size="xs"
+                      className="h-12 w-9"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{offeredBook.title}</p>
                     <p className="text-xs text-muted-foreground truncate">by {offeredBook.author}</p>
-                    <span className={`inline-flex items-center rounded-full border px-1.5 py-0.2 text-[9px] font-semibold uppercase mt-1 ${getConditionStyles(offeredBook.bookCondition)}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-1.5 py-0.2 text-[9px] font-semibold uppercase mt-1 ${getConditionStyles(
+                        offeredBook.bookCondition
+                      )}`}
+                    >
                       {offeredBook.bookCondition}
                     </span>
                   </div>
@@ -234,13 +286,28 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               )}
             </div>
           </div>
+
+          {/* Return Request note banner if present */}
+          {request.returnMessage && (
+            <div className="mt-3 p-3 rounded-lg border border-primary/20 bg-primary/5 text-xs text-foreground flex items-start gap-2">
+              <RotateCcw className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-primary">Return Note: </span>
+                <span>{request.returnMessage}</span>
+              </div>
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="p-5 pt-0 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
-              <span>{isOutgoing ? `Recipient ID: #${request.ownerId || requestedBook?.ownerId}` : `Requester ID: #${request.requesterId}`}</span>
+              <span>
+                {isOutgoing
+                  ? `Original Owner ID: #${request.ownerId || requestedBook?.ownerId}`
+                  : `Requester ID: #${request.requesterId}`}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
@@ -255,7 +322,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               size="sm"
               variant="outline"
               onClick={async () => {
-                const targetUserId = isOutgoing ? requestedBook?.ownerId : request.requesterId;
+                const targetUserId = isOutgoing ? request.ownerId || requestedBook?.ownerId : request.requesterId;
                 if (!targetUserId) {
                   toast.error('Partner information unavailable');
                   return;
@@ -276,18 +343,103 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               <span>Chat</span>
             </Button>
 
+            {/* Timeline modal button for processed exchanges */}
+            {request.status !== 'PENDING' && request.status !== 'REJECTED' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowTimelineModal(true)}
+                className="flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold border-border/80 hover:bg-muted"
+              >
+                <History className="h-3.5 w-3.5 text-primary" />
+                <span>Timeline</span>
+              </Button>
+            )}
+
+            {/* Initial Pending Actions */}
             {isIncoming && isPending && !showConfirm && (
               <>
-                <Button size="sm" onClick={() => setShowConfirm('accept')} className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm">
+                <Button
+                  size="sm"
+                  onClick={() => setShowConfirm('accept')}
+                  className="flex items-center gap-1 h-8 px-3 font-semibold bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm"
+                >
                   <Check className="h-3.5 w-3.5" />
                   <span>Accept</span>
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => setShowConfirm('reject')} className="flex items-center gap-1 h-8 px-3 font-semibold shadow-sm">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setShowConfirm('reject')}
+                  className="flex items-center gap-1 h-8 px-3 font-semibold shadow-sm"
+                >
                   <X className="h-3.5 w-3.5" />
                   <span>Reject</span>
                 </Button>
               </>
             )}
+
+            {/* RETURN WORKFLOW ACTIONS */}
+            {/* 1. Original owner can Request Back when exchange is ACCEPTED or RETURN_DECLINED */}
+            {isOriginalOwner && (request.status === 'ACCEPTED' || request.status === 'RETURN_DECLINED') && (
+              <Button
+                size="sm"
+                onClick={() => setReturnAction('request_return')}
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Request Back</span>
+              </Button>
+            )}
+
+            {/* 2. Holder receives Return Request -> can Accept or Decline */}
+            {isCurrentHolder && request.status === 'RETURN_REQUESTED' && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => setReturnAction('accept_return')}
+                  className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Accept Return</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setReturnAction('decline_return')}
+                  className="flex items-center gap-1.5 h-8 px-3 font-semibold shadow-sm"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>Decline</span>
+                </Button>
+              </>
+            )}
+
+            {/* 3. Holder marks book as returned when RETURN_ACCEPTED or RETURN_IN_PROGRESS */}
+            {isCurrentHolder && (request.status === 'RETURN_ACCEPTED' || request.status === 'RETURN_IN_PROGRESS') && (
+              <Button
+                size="sm"
+                onClick={() => setReturnAction('mark_returned')}
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+              >
+                <PackageCheck className="h-3.5 w-3.5" />
+                <span>Mark as Returned</span>
+              </Button>
+            )}
+
+            {/* 4. Owner confirms receipt when RETURNED */}
+            {isOriginalOwner && request.status === 'RETURNED' && (
+              <Button
+                size="sm"
+                onClick={() => setReturnAction('confirm_received')}
+                className="flex items-center gap-1.5 h-8 px-3 font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Confirm Received</span>
+              </Button>
+            )}
+
+            {/* Review Button when completed */}
             {canReview && (
               <Button
                 size="sm"
@@ -301,7 +453,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
           </div>
         </CardFooter>
 
-        {/* Confirmation Overlays inside the card itself for speed and clean UX */}
+        {/* Confirmation Overlays inside the card itself for pending requests */}
         <AnimatePresence>
           {showConfirm && (
             <motion.div
@@ -311,20 +463,30 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
               className="border-t border-border bg-muted/30 p-5 space-y-3 text-sm"
             >
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className={`h-5 w-5 ${showConfirm === 'accept' ? 'text-amber-500' : 'text-destructive'} flex-shrink-0 mt-0.5`} />
+                <AlertTriangle
+                  className={`h-5 w-5 ${
+                    showConfirm === 'accept' ? 'text-amber-500' : 'text-destructive'
+                  } flex-shrink-0 mt-0.5`}
+                />
                 <div>
                   <h4 className="font-bold text-foreground">
                     {showConfirm === 'accept' ? 'Accept Swap Proposal?' : 'Reject Swap Proposal?'}
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {showConfirm === 'accept'
-                      ? 'Accepting will swap these books. This operation will close the request.'
+                      ? 'Accepting will transfer this book to the requester. You can request it back later.'
                       : 'Rejecting will close the exchange request. This action cannot be undone.'}
                   </p>
                 </div>
               </div>
               <div className="flex justify-end gap-2.5">
-                <Button variant="outline" size="sm" onClick={() => setShowConfirm(null)} disabled={acceptMutation.isPending || rejectMutation.isPending} className="h-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowConfirm(null)}
+                  disabled={acceptMutation.isPending || rejectMutation.isPending}
+                  className="h-8"
+                >
                   Cancel
                 </Button>
                 {showConfirm === 'accept' ? (
@@ -351,6 +513,28 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Modal: Return Action Confirmation */}
+        {returnAction && (
+          <ReturnActionDialog
+            isOpen={!!returnAction}
+            onClose={() => setReturnAction(null)}
+            exchangeId={request.id}
+            bookTitle={bookTitle}
+            actionType={returnAction}
+          />
+        )}
+
+        {/* Modal: Full Lifecycle & Timeline */}
+        {showTimelineModal && (
+          <ReturnDetailsModal
+            isOpen={showTimelineModal}
+            onClose={() => setShowTimelineModal(false)}
+            exchangeId={request.id}
+          />
+        )}
+
+        {/* Modal: Review Dialog */}
         {isReviewOpen && requestedBook && (
           <ReviewDialog
             isOpen={isReviewOpen}

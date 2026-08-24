@@ -1,16 +1,21 @@
 package com.hebee.bookswap.service.impl;
 
 import com.hebee.bookswap.constant.BookCondition;
+import com.hebee.bookswap.constant.ExchangeEventType;
 import com.hebee.bookswap.constant.ExchangeRequestStatus;
+import com.hebee.bookswap.dto.ExchangeHistoryResponseDTO;
 import com.hebee.bookswap.dto.ExchangeRequestCreate;
 import com.hebee.bookswap.dto.ExchangeRequestResponse;
+import com.hebee.bookswap.dto.ReturnDetailsResponseDTO;
+import com.hebee.bookswap.dto.ReturnRequestCreateDTO;
 import com.hebee.bookswap.entity.Book;
+import com.hebee.bookswap.entity.ExchangeHistory;
 import com.hebee.bookswap.entity.ExchangeRequest;
 import com.hebee.bookswap.entity.User;
+import com.hebee.bookswap.exception.InvalidReturnStateException;
 import com.hebee.bookswap.mapper.ExchangeRequestMapper;
-import com.hebee.bookswap.repository.BookRepository;
-import com.hebee.bookswap.repository.ExchangeRequestRepository;
-import com.hebee.bookswap.repository.UserRepository;
+import com.hebee.bookswap.repository.*;
+import com.hebee.bookswap.service.ChatService;
 import com.hebee.bookswap.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +27,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,6 +50,15 @@ public class ExchangeRequestServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private ExchangeHistoryRepository exchangeHistoryRepository;
+
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ChatService chatService;
+
     private ExchangeRequestServiceImpl exchangeRequestService;
 
     private User requester;
@@ -58,7 +73,10 @@ public class ExchangeRequestServiceImplTest {
                 userRepository,
                 bookRepository,
                 new ExchangeRequestMapper(),
-                notificationService
+                notificationService,
+                exchangeHistoryRepository,
+                conversationRepository,
+                chatService
         );
 
         requester = new User("Requester User", "requester@example.com", "password");
@@ -106,6 +124,7 @@ public class ExchangeRequestServiceImplTest {
         verify(notificationService, times(1)).createNotification(
                 eq(sender), eq("SWAP_REQUEST"), anyString(), eq(10L)
         );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
     }
 
     @Test
@@ -154,6 +173,7 @@ public class ExchangeRequestServiceImplTest {
         verify(notificationService, times(1)).createNotification(
                 eq(sender), eq("REQUEST_ACCEPTED"), anyString(), eq(10L)
         );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
     }
 
     @Test
@@ -173,5 +193,194 @@ public class ExchangeRequestServiceImplTest {
         when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
 
         assertThrows(AccessDeniedException.class, () -> exchangeRequestService.acceptRequest(10L));
+    }
+
+    // ==========================================
+    // RETURN WORKFLOW TESTS
+    // ==========================================
+
+    @Test
+    void testRequestReturn_Success_ByOwner() {
+        // Authenticated as sender (original owner)
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.ACCEPTED);
+        exchangeRequest.setId(10L);
+
+        when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnRequestCreateDTO req = new ReturnRequestCreateDTO("Finished reading, requesting return please");
+        ReturnDetailsResponseDTO result = exchangeRequestService.requestReturn(10L, req);
+
+        assertNotNull(result);
+        assertEquals(ExchangeRequestStatus.RETURN_REQUESTED, result.getStatus());
+        assertEquals("Finished reading, requesting return please", result.getReturnMessage());
+        assertNotNull(result.getReturnRequestedAt());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(requester), eq("RETURN_REQUESTED"), anyString(), eq(10L)
+        );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testRequestReturn_Fails_WhenNotOriginalOwner() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.ACCEPTED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        assertThrows(AccessDeniedException.class, () -> exchangeRequestService.requestReturn(10L, null));
+    }
+
+    @Test
+    void testRequestReturn_Fails_WhenNotInAcceptedOrDeclinedState() {
+        // Authenticated as sender (owner)
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.PENDING);
+        exchangeRequest.setId(10L);
+
+        when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        assertThrows(InvalidReturnStateException.class, () -> exchangeRequestService.requestReturn(10L, null));
+    }
+
+    @Test
+    void testAcceptReturn_Success_ByHolder() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_REQUESTED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnDetailsResponseDTO result = exchangeRequestService.acceptReturn(10L);
+
+        assertNotNull(result);
+        assertEquals(ExchangeRequestStatus.RETURN_IN_PROGRESS, result.getStatus());
+        assertNotNull(result.getReturnAcceptedAt());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(sender), eq("RETURN_ACCEPTED"), anyString(), eq(10L)
+        );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testDeclineReturn_Success_ByHolder() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_REQUESTED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnDetailsResponseDTO result = exchangeRequestService.declineReturn(10L, new ReturnRequestCreateDTO("Still reading, will return next week"));
+
+        assertNotNull(result);
+        assertEquals(ExchangeRequestStatus.RETURN_DECLINED, result.getStatus());
+        assertNotNull(result.getReturnDeclinedAt());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(sender), eq("RETURN_DECLINED"), anyString(), eq(10L)
+        );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testMarkReturned_Success_ByHolder() {
+        // Authenticated as requester (current holder)
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURN_IN_PROGRESS);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnDetailsResponseDTO result = exchangeRequestService.markReturned(10L);
+
+        assertNotNull(result);
+        assertEquals(ExchangeRequestStatus.RETURNED, result.getStatus());
+        assertNotNull(result.getReturnedAt());
+
+        verify(notificationService, times(1)).createNotification(
+                eq(sender), eq("BOOK_RETURNED"), anyString(), eq(10L)
+        );
+        verify(exchangeHistoryRepository, times(1)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testConfirmReceived_Success_RestoresOwnership() {
+        // Authenticated as sender (original owner)
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken("sender@example.com", null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        requestedBook.setOwner(requester); // currently with requester
+        offeredBook.setOwner(sender);      // currently with sender
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.RETURNED);
+        exchangeRequest.setId(10L);
+
+        when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(sender));
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+        when(exchangeRequestRepository.save(any(ExchangeRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnDetailsResponseDTO result = exchangeRequestService.confirmReceived(10L);
+
+        assertNotNull(result);
+        assertEquals(ExchangeRequestStatus.COMPLETED, result.getStatus());
+        assertNotNull(result.getConfirmedAt());
+
+        // Book ownership restored
+        assertEquals(sender.getId(), requestedBook.getOwner().getId());
+        assertEquals(requester.getId(), offeredBook.getOwner().getId());
+        verify(bookRepository, times(1)).save(requestedBook);
+        verify(bookRepository, times(1)).save(offeredBook);
+
+        verify(notificationService, times(1)).createNotification(
+                eq(requester), eq("RETURN_COMPLETED"), anyString(), eq(10L)
+        );
+        verify(notificationService, times(1)).createNotification(
+                eq(sender), eq("RETURN_COMPLETED"), anyString(), eq(10L)
+        );
+        verify(exchangeHistoryRepository, times(2)).save(any(ExchangeHistory.class));
+    }
+
+    @Test
+    void testGetExchangeHistory_Success() {
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.COMPLETED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        ExchangeHistory h1 = new ExchangeHistory(exchangeRequest, requester, ExchangeEventType.EXCHANGE_CREATED, "Created");
+        h1.setId(1L);
+        when(exchangeHistoryRepository.findByExchangeRequestIdOrderByCreatedAtAsc(10L))
+                .thenReturn(List.of(h1));
+
+        List<ExchangeHistoryResponseDTO> history = exchangeRequestService.getExchangeHistory(10L);
+
+        assertNotNull(history);
+        assertEquals(1, history.size());
+        assertEquals(ExchangeEventType.EXCHANGE_CREATED, history.get(0).getEventType());
     }
 }

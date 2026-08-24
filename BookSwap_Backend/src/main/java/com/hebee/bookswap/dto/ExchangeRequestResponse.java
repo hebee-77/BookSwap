@@ -12,6 +12,13 @@ public class ExchangeRequestResponse {
     private Long offeredBookId;
     private ExchangeRequestStatus status;
     private LocalDateTime createdAt;
+    private LocalDateTime returnRequestedAt;
+    private LocalDateTime returnAcceptedAt;
+    private LocalDateTime returnDeclinedAt;
+    private LocalDateTime returnStartedAt;
+    private LocalDateTime returnedAt;
+    private LocalDateTime confirmedAt;
+    private String returnMessage;
 
     public ExchangeRequestResponse() {
     }
@@ -88,5 +95,61 @@ public class ExchangeRequestResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getReturnRequestedAt() {
+        return returnRequestedAt;
+    }
+
+    public void setReturnRequestedAt(LocalDateTime returnRequestedAt) {
+        this.returnRequestedAt = returnRequestedAt;
+    }
+
+    public LocalDateTime getReturnAcceptedAt() {
+        return returnAcceptedAt;
+    }
+
+    public void setReturnAcceptedAt(LocalDateTime returnAcceptedAt) {
+        this.returnAcceptedAt = returnAcceptedAt;
+    }
+
+    public LocalDateTime getReturnDeclinedAt() {
+        return returnDeclinedAt;
+    }
+
+    public void setReturnDeclinedAt(LocalDateTime returnDeclinedAt) {
+        this.returnDeclinedAt = returnDeclinedAt;
+    }
+
+    public LocalDateTime getReturnStartedAt() {
+        return returnStartedAt;
+    }
+
+    public void setReturnStartedAt(LocalDateTime returnStartedAt) {
+        this.returnStartedAt = returnStartedAt;
+    }
+
+    public LocalDateTime getReturnedAt() {
+        return returnedAt;
+    }
+
+    public void setReturnedAt(LocalDateTime returnedAt) {
+        this.returnedAt = returnedAt;
+    }
+
+    public LocalDateTime getConfirmedAt() {
+        return confirmedAt;
+    }
+
+    public void setConfirmedAt(LocalDateTime confirmedAt) {
+        this.confirmedAt = confirmedAt;
+    }
+
+    public String getReturnMessage() {
+        return returnMessage;
+    }
+
+    public void setReturnMessage(String returnMessage) {
+        this.returnMessage = returnMessage;
     }
 }

@@ -26,4 +26,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     @Query("SELECT CASE WHEN COUNT(cp) > 0 THEN true ELSE false END FROM ConversationParticipant cp " +
            "WHERE cp.conversation.id = :conversationId AND cp.user.id = :userId")
     boolean isUserParticipant(@Param("conversationId") Long conversationId, @Param("userId") Long userId);
+
+    List<Conversation> findByExchangeRequestId(Long exchangeRequestId);
 }
