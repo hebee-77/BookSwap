@@ -3,16 +3,23 @@ import type { Book, BookRequest, BookPageResponse, BookQueryParams } from '../ty
 
 export const bookService = {
   getBooks: async (params?: BookQueryParams): Promise<BookPageResponse> => {
-    // If search/filter params are present, redirect to the search endpoint
-    if (params?.keyword || params?.condition) {
+    const hasKeyword = !!params?.keyword?.trim();
+    const hasCondition = !!params?.condition;
+
+    if (hasKeyword) {
       const searchParams = { ...params };
-      if (!searchParams.keyword) delete searchParams.keyword;
       if (!searchParams.condition) delete searchParams.condition;
-      
       const response = await api.get<BookPageResponse>('/books/search', { params: searchParams });
       return response.data;
     }
-    
+
+    if (hasCondition) {
+      const filterParams = { ...params };
+      if (!filterParams.keyword) delete filterParams.keyword;
+      const response = await api.get<BookPageResponse>('/books/filter', { params: filterParams });
+      return response.data;
+    }
+
     const response = await api.get<BookPageResponse>('/books', { params });
     return response.data;
   },

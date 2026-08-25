@@ -171,12 +171,19 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public BookPageResponse searchBooks(String keyword, String condition, int page, int size, String sortBy, String direction) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            throw new IllegalArgumentException("Search keyword is required");
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasCondition = condition != null && !condition.trim().isEmpty();
+
+        if (!hasKeyword && !hasCondition) {
+            return getAllBooks(page, size, sortBy, direction);
+        }
+
+        if (!hasKeyword) {
+            return filterBooks(condition, page, size, sortBy, direction);
         }
 
         BookCondition bookCondition = null;
-        if (condition != null && !condition.trim().isEmpty()) {
+        if (hasCondition) {
             try {
                 bookCondition = BookCondition.valueOf(condition.toUpperCase());
             } catch (IllegalArgumentException e) {

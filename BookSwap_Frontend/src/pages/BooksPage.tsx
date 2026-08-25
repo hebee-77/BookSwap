@@ -1,7 +1,7 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useRef } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, SlidersHorizontal } from 'lucide-react';
+import { CheckCircle2, Loader2, Plus, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { bookService } from '../services/bookService';
 import type { BookCondition } from '../types/book';
@@ -11,37 +11,93 @@ import { BookSearch } from '../components/books/BookSearch';
 import { BookFilters } from '../components/books/BookFilters';
 import { BookSort } from '../components/books/BookSort';
 import { BookFilterChips } from '../components/books/BookFilterChips';
-import { BookPagination } from '../components/books/BookPagination';
 import { EmptyBooks } from '../components/books/EmptyBooks';
 import { Button } from '../components/ui/button';
 
 export const BooksPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [hasUserScrolled, setHasUserScrolled] = React.useState(false);
 
   // Extract query parameters from URL with defaults
   const keyword = searchParams.get('keyword') || '';
   const condition = (searchParams.get('condition') as BookCondition | '') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const direction = (searchParams.get('direction') as 'asc' | 'desc') || 'desc';
-  const page = Number(searchParams.get('page')) || 0;
   const showOnlyAvailable = searchParams.get('available') === 'true';
 
-  const size = 6; // items per page
+  const size = 6; // strictly 6 items per batch
 
-  // Fetch books matching current search state (excluding client-side available filter)
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['books', page, keyword, condition, sortBy, direction],
-    queryFn: () =>
+  // Reset scroll detection when search/filter inputs change
+  useEffect(() => {
+    setHasUserScrolled(false);
+  }, [keyword, condition, sortBy, direction]);
+
+  // Listen for user scroll interaction
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 20) {
+        setHasUserScrolled(true);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Fetch books matching current search state with infinite query
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['books', 'infinite', keyword, condition, sortBy, direction],
+    queryFn: ({ pageParam = 0 }) =>
       bookService.getBooks({
-        page,
+        page: pageParam,
         size,
         keyword: keyword || undefined,
         condition: condition || undefined,
         sortBy,
         direction,
       }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.last || lastPage.page + 1 >= lastPage.totalPages) {
+        return undefined;
+      }
+      return lastPage.page + 1;
+    },
   });
+
+  // IntersectionObserver to auto-fetch next page only when user scrolls to bottom
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasNextPage && !isFetchingNextPage && hasUserScrolled) {
+          fetchNextPage();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '50px',
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => {
+      observer.unobserve(sentinel);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, hasUserScrolled]);
 
   // URL State Updates
   const updateParams = (newParams: Record<string, string | number | boolean | null | undefined>) => {
@@ -57,35 +113,31 @@ export const BooksPage: React.FC = () => {
   };
 
   const handleSearchChange = (val: string) => {
-    updateParams({ keyword: val, page: 0 }); // reset page on search
+    updateParams({ keyword: val });
   };
 
   const handleConditionChange = (cond: BookCondition | '') => {
-    updateParams({ condition: cond, page: 0 }); // reset page on filter change
+    updateParams({ condition: cond });
   };
 
   const handleSortChange = (newSortBy: string, newDirection: 'asc' | 'desc') => {
-    updateParams({ sortBy: newSortBy, direction: newDirection, page: 0 }); // reset page on sort change
+    updateParams({ sortBy: newSortBy, direction: newDirection });
   };
 
   const handleAvailabilityToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateParams({ available: e.target.checked ? true : null });
   };
 
-  const handlePageChange = (newPage: number) => {
-    updateParams({ page: newPage });
-  };
-
   const handleClearFilters = () => {
-    setSearchParams(new URLSearchParams()); // clear all
+    setSearchParams(new URLSearchParams());
   };
 
-  const content = data?.content || [];
-  const totalPages = data?.totalPages || 0;
-  const totalElements = data?.totalElements || 0;
+  // Flatten books across all loaded pages
+  const allBooks = data?.pages.flatMap((page) => page.content) || [];
+  const totalElements = data?.pages[0]?.totalElements || 0;
 
-  // Filter content client-side for availability as backend doesn't support it
-  const filteredContent = showOnlyAvailable ? content.filter((b) => b.available) : content;
+  // Filter content client-side for availability as backend doesn't support it directly
+  const filteredContent = showOnlyAvailable ? allBooks.filter((b) => b.available) : allBooks;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 bg-background animate-in fade-in duration-300">
@@ -112,7 +164,7 @@ export const BooksPage: React.FC = () => {
         {/* Search Input */}
         <div className="flex-1 space-y-2">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Search Books</span>
-          <BookSearch value={keyword} onChange={handleSearchChange} isLoading={isFetching} />
+          <BookSearch value={keyword} onChange={handleSearchChange} isLoading={isFetching && !isFetchingNextPage} />
         </div>
 
         {/* Condition Filter */}
@@ -145,8 +197,8 @@ export const BooksPage: React.FC = () => {
         keyword={keyword}
         condition={condition}
         showOnlyAvailable={showOnlyAvailable}
-        onRemoveKeyword={() => updateParams({ keyword: null, page: 0 })}
-        onRemoveCondition={() => updateParams({ condition: null, page: 0 })}
+        onRemoveKeyword={() => updateParams({ keyword: null })}
+        onRemoveCondition={() => updateParams({ condition: null })}
         onRemoveAvailability={() => updateParams({ available: null })}
         onClearAll={handleClearFilters}
       />
@@ -193,15 +245,41 @@ export const BooksPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Shared Reusable Pagination */}
-            <BookPagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            {/* Infinite Scroll Sentinel & Loading Indicator */}
+            <div ref={loadMoreRef} className="pt-4 pb-8 flex flex-col items-center justify-center">
+              {isFetchingNextPage ? (
+                <div className="w-full space-y-6">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <BookSkeleton key={`next-skeleton-${idx}`} />
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-medium py-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span>Loading more books...</span>
+                  </div>
+                </div>
+              ) : hasNextPage ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  className="text-xs text-muted-foreground hover:text-foreground font-medium rounded-xl"
+                >
+                  Load More Books
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground bg-muted/40 border border-border/50 px-4 py-2 rounded-full">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <span>You've reached the end of the shelf ({totalElements} {totalElements === 1 ? 'book' : 'books'})</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 };
+
+export default BooksPage;
