@@ -64,28 +64,12 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   });
 
   // Fetch offered book by offeredBookId if present
-  const { data: offeredBookData, isLoading: isLoadingOfferedBook } = useQuery({
+  const { data: offeredBook, isLoading: isLoadingOfferedBook } = useQuery({
     queryKey: ['book', request.offeredBookId],
     queryFn: () => bookService.getBookById(request.offeredBookId!),
     enabled: !!request.offeredBookId,
   });
 
-  // Fallback query for requester's listed books if offeredBookId is absent (legacy requests)
-  const { data: requesterBooksData, isLoading: isLoadingRequesterBooks } = useQuery({
-    queryKey: ['owner-books', request.requesterId],
-    queryFn: () => bookService.getBooksByOwner(request.requesterId),
-    enabled: !request.offeredBookId,
-  });
-
-  const requesterBooks = requesterBooksData?.content || [];
-
-  const getOfferedBook = () => {
-    if (offeredBookData) return offeredBookData;
-    const available = requesterBooks.find((b) => b.available);
-    return available || requesterBooks[0] || null;
-  };
-
-  const offeredBook = getOfferedBook();
 
   const acceptMutation = useMutation({
     mutationFn: () => swapService.acceptRequest(request.id),
@@ -161,7 +145,7 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
     }
   };
 
-  const isLoading = isLoadingReqBook || (request.offeredBookId ? isLoadingOfferedBook : isLoadingRequesterBooks);
+  const isLoading = isLoadingReqBook || (request.offeredBookId ? isLoadingOfferedBook : false);
 
   if (isLoading) {
     return (
