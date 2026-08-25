@@ -73,9 +73,9 @@ export const LandingPage: React.FC = () => {
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Link to={isAuthenticated ? '/dashboard' : '/login'}>
+              <Link to="/books">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-6 text-base">
-                  {isAuthenticated ? 'Browse Books' : 'Sign In'}
+                  Browse Books
                 </Button>
               </Link>
             </motion.div>
