@@ -8,6 +8,7 @@ export interface Book {
   description?: string;
   bookCondition: BookCondition;
   ownerId: number;
+  ownerName?: string;
   createdAt: string;
   available: boolean;
   imageUrl?: string | null;

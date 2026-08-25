@@ -151,8 +151,10 @@ export const BookDetailsPage: React.FC = () => {
             <div className="flex items-center gap-2.5">
               <User className="h-5 w-5 text-muted-foreground/75" />
               <div>
-                <p className="text-xs text-muted-foreground">Owner ID</p>
-                <p className="text-sm font-semibold text-foreground">User #{book.ownerId}</p>
+                <p className="text-xs text-muted-foreground">Owner</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {book.ownerName ? book.ownerName : `User #${book.ownerId}`}
+                </p>
               </div>
             </div>
 

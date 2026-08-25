@@ -100,9 +100,9 @@ export const BookCard: React.FC<BookCardProps> = ({ book }) => {
         </div>
 
         <CardFooter className="flex items-center justify-between border-t border-border p-4 bg-muted/20 text-[10px] text-muted-foreground font-bold mt-auto">
-          <div className="flex items-center gap-1">
-            <User className="h-3.5 w-3.5 text-muted-foreground/60" />
-            <span>OWNER #{book.ownerId}</span>
+          <div className="flex items-center gap-1 min-w-0 pr-2">
+            <User className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+            <span className="truncate max-w-[120px]">{book.ownerName || `OWNER #${book.ownerId}`}</span>
           </div>
           
           <div className="flex items-center gap-1">

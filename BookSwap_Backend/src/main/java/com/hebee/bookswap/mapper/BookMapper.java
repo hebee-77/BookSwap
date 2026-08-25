@@ -36,6 +36,7 @@ public class BookMapper {
         response.setBookCondition(book.getBookCondition());
         if (book.getOwner() != null) {
             response.setOwnerId(book.getOwner().getId());
+            response.setOwnerName(book.getOwner().getName());
         }
         response.setCreatedAt(book.getCreatedAt());
         response.setImageUrl(book.getImageUrl());
