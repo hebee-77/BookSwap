@@ -23,4 +23,5 @@ public interface ExchangeRequestService {
     ReturnDetailsResponseDTO confirmReceived(Long exchangeId);
     ReturnDetailsResponseDTO getReturnDetails(Long exchangeId);
     List<ExchangeHistoryResponseDTO> getExchangeHistory(Long exchangeId);
+    void deleteExchange(Long exchangeId);
 }

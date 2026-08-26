@@ -50,6 +50,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
     private final ConversationRepository conversationRepository;
     private final ChatService chatService;
     private final ReturnVerificationRepository returnVerificationRepository;
+    private final ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${bookswap.return.otp.expiration-minutes:30}")
@@ -70,6 +71,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                                       ConversationRepository conversationRepository,
                                       @Lazy ChatService chatService,
                                       ReturnVerificationRepository returnVerificationRepository,
+                                      ReviewRepository reviewRepository,
                                       PasswordEncoder passwordEncoder) {
         this.exchangeRequestRepository = exchangeRequestRepository;
         this.userRepository = userRepository;
@@ -80,6 +82,7 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         this.conversationRepository = conversationRepository;
         this.chatService = chatService;
         this.returnVerificationRepository = returnVerificationRepository;
+        this.reviewRepository = reviewRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -838,6 +841,52 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
         dto.setHistory(historyList);
 
         return dto;
+    }
+
+    @Override
+    public void deleteExchange(Long exchangeId) {
+        ExchangeRequest exchange = exchangeRequestRepository.findById(exchangeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Exchange request not found"));
+
+        User currentUser = getAuthenticatedUser();
+        boolean isAdmin = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+        boolean isParticipant = (exchange.getRequester() != null && exchange.getRequester().getId().equals(currentUser.getId()))
+                || (exchange.getOwner() != null && exchange.getOwner().getId().equals(currentUser.getId()))
+                || (exchange.getBook() != null && exchange.getBook().getOwner() != null && exchange.getBook().getOwner().getId().equals(currentUser.getId()));
+
+        if (!isParticipant && !isAdmin) {
+            throw new AccessDeniedException("Access denied: You are not authorized to delete this exchange history");
+        }
+
+        // 1. Delete associated exchange histories
+        List<ExchangeHistory> histories = exchangeHistoryRepository.findByExchangeRequestIdOrderByCreatedAtAsc(exchangeId);
+        if (!histories.isEmpty()) {
+            exchangeHistoryRepository.deleteAll(histories);
+        }
+
+        // 2. Delete return verifications
+        List<ReturnVerification> verifications = returnVerificationRepository.findByExchangeRequestIdOrderByCreatedAtDesc(exchangeId);
+        if (!verifications.isEmpty()) {
+            returnVerificationRepository.deleteAll(verifications);
+        }
+
+        // 3. Unlink conversations if any
+        List<Conversation> convs = conversationRepository.findByExchangeRequestId(exchangeId);
+        for (Conversation c : convs) {
+            c.setExchangeRequest(null);
+            conversationRepository.save(c);
+        }
+
+        // 4. Unlink reviews if any
+        List<Review> reviews = reviewRepository.findByExchangeRequestId(exchangeId);
+        for (Review r : reviews) {
+            r.setExchangeRequest(null);
+            reviewRepository.save(r);
+        }
+
+        // 5. Delete exchange request
+        exchangeRequestRepository.delete(exchange);
     }
 
     private ExchangeHistoryResponseDTO mapToHistoryDTO(ExchangeHistory h) {

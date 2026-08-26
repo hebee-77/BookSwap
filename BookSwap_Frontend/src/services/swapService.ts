@@ -94,4 +94,8 @@ export const swapService = {
     const response = await api.get<ExchangeHistoryItem[]>(`/exchange-requests/${id}/history`);
     return response.data;
   },
+
+  deleteExchange: async (id: number): Promise<void> => {
+    await api.delete(`/exchange-requests/${id}`);
+  },
 };

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   History,
   KeyRound,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
@@ -25,7 +26,7 @@ import { swapService } from '../../services/swapService';
 import { chatService } from '../../services/chatService';
 import type { ExchangeRequest } from '../../types/swap';
 import { SwapStatusBadge } from './SwapStatusBadge';
-import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { reviewService } from '../../services/reviewService';
 import { ReviewDialog } from '../reviews/ReviewDialog';
@@ -44,11 +45,30 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState<'accept' | 'reject' | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [returnAction, setReturnAction] = useState<ReturnActionType | null>(null);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [showGenerateOtp, setShowGenerateOtp] = useState(false);
   const [showVerifyOtp, setShowVerifyOtp] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => swapService.deleteExchange(request.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['swap-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['sent-swaps'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      toast.success('Exchange record deleted successfully');
+      setShowDeleteConfirm(false);
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to delete exchange record.';
+      toast.error(msg);
+      setShowDeleteConfirm(false);
+    },
+  });
 
   // Fetch reviews written by the user to check eligibility
   const { data: myReviews = [] } = useQuery({
@@ -450,6 +470,20 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
                 <span>Leave Review</span>
               </Button>
             )}
+
+            {/* Delete History Button */}
+            {isParticipant && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors"
+                title="Delete this exchange record"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+            )}
           </div>
         </CardFooter>
 
@@ -567,6 +601,52 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
             }
           />
         )}
+
+        {/* Modal: Delete Confirmation */}
+        <AnimatePresence>
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md"
+              >
+                <Card className="border border-destructive/20 shadow-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold text-destructive flex items-center gap-2">
+                      <Trash2 className="h-5 w-5" />
+                      <span>Delete Exchange History?</span>
+                    </CardTitle>
+                    <CardDescription className="pt-2 text-foreground font-medium">
+                      Are you sure you want to delete the exchange history record for **"{bookTitle}"** (ID #{request.id})?
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground leading-relaxed">
+                    This will permanently remove this exchange request, its return status, and its entire history log. This action cannot be undone.
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-3 border-t border-border pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      className="flex items-center gap-1.5 font-semibold"
+                    >
+                      {deleteMutation.isPending ? 'Deleting...' : 'Confirm Delete'}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </Card>
     </motion.div>
   );

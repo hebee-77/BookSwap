@@ -130,4 +130,10 @@ public class ExchangeRequestController {
         List<ExchangeHistoryResponseDTO> response = exchangeRequestService.getExchangeHistory(id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteExchange(@PathVariable Long id) {
+        exchangeRequestService.deleteExchange(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
 }

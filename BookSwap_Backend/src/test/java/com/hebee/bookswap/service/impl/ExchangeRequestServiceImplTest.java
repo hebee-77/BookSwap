@@ -59,6 +59,9 @@ public class ExchangeRequestServiceImplTest {
     private ReturnVerificationRepository returnVerificationRepository;
 
     @Mock
+    private ReviewRepository reviewRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     private ExchangeRequestServiceImpl exchangeRequestService;
@@ -80,6 +83,7 @@ public class ExchangeRequestServiceImplTest {
                 conversationRepository,
                 chatService,
                 returnVerificationRepository,
+                reviewRepository,
                 passwordEncoder
         );
 

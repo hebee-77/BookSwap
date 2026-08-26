@@ -14,6 +14,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findByReviewerId(Long reviewerId);
 
+    List<Review> findByExchangeRequestId(Long exchangeRequestId);
+
     boolean existsByExchangeRequestIdAndReviewerId(Long exchangeRequestId, Long reviewerId);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.reviewedUser.id = :userId")
