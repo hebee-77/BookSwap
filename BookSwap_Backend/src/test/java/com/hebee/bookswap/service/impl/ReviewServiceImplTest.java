@@ -100,7 +100,7 @@ public class ReviewServiceImplTest {
         ReviewRequest request = new ReviewRequest(100L, 5, "Comment");
         when(exchangeRequestRepository.findById(100L)).thenReturn(Optional.of(exchangeRequest));
 
-        assertThrows(IllegalArgumentException.class, () -> reviewService.createReview(request, 1L));
+        assertThrows(com.hebee.bookswap.exception.BadRequestException.class, () -> reviewService.createReview(request, 1L));
     }
 
     @Test
@@ -108,7 +108,7 @@ public class ReviewServiceImplTest {
         ReviewRequest request = new ReviewRequest(100L, 5, "Comment");
         when(exchangeRequestRepository.findById(100L)).thenReturn(Optional.of(exchangeRequest));
 
-        assertThrows(IllegalArgumentException.class, () -> reviewService.createReview(request, 99L));
+        assertThrows(com.hebee.bookswap.exception.ForbiddenException.class, () -> reviewService.createReview(request, 99L));
     }
 
     @Test
@@ -117,7 +117,7 @@ public class ReviewServiceImplTest {
         when(exchangeRequestRepository.findById(100L)).thenReturn(Optional.of(exchangeRequest));
         when(reviewRepository.existsByExchangeRequestIdAndReviewerId(100L, 1L)).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> reviewService.createReview(request, 1L));
+        assertThrows(com.hebee.bookswap.exception.ConflictException.class, () -> reviewService.createReview(request, 1L));
     }
 
     @Test
@@ -175,6 +175,6 @@ public class ReviewServiceImplTest {
         review.setId(500L);
         when(reviewRepository.findById(500L)).thenReturn(Optional.of(review));
 
-        assertThrows(AccessDeniedException.class, () -> reviewService.deleteReview(500L, 2L, false));
+        assertThrows(com.hebee.bookswap.exception.ForbiddenException.class, () -> reviewService.deleteReview(500L, 2L, false));
     }
 }

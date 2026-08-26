@@ -120,18 +120,18 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
 
         if (book.getOwner().getId().equals(requester.getId())) {
-            throw new IllegalArgumentException("You cannot request your own book");
+            throw new com.hebee.bookswap.exception.BadRequestException("You cannot request your own book.");
         }
 
         // Prevent duplicate pending requests from the same user for the same book
         if (exchangeRequestRepository.existsByRequesterIdAndBookIdAndStatus(
                 requester.getId(), book.getId(), ExchangeRequestStatus.PENDING)) {
-            throw new IllegalArgumentException("You already have a pending exchange request for this book");
+            throw new com.hebee.bookswap.exception.ConflictException("You already have a pending exchange request for this book.");
         }
 
         // Prevent requesting books that are currently in an active exchange/loan
         if (exchangeRequestRepository.existsByBookIdAndStatusIn(book.getId(), ACTIVE_EXCHANGE_STATUSES)) {
-            throw new IllegalArgumentException("This book is currently in an active exchange and is not available.");
+            throw new com.hebee.bookswap.exception.ConflictException("This book is currently in an active exchange and is not available.");
         }
 
         Book offeredBook = null;
@@ -140,17 +140,17 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
                     .orElseThrow(() -> new ResourceNotFoundException("Offered book not found"));
 
             if (!offeredBook.getOwner().getId().equals(requester.getId())) {
-                throw new IllegalArgumentException("You can only offer books that you own");
+                throw new com.hebee.bookswap.exception.BadRequestException("You can only offer books that you own.");
             }
 
             if (offeredBook.getId().equals(book.getId())) {
-                throw new IllegalArgumentException("Offered book cannot be the same as requested book");
+                throw new com.hebee.bookswap.exception.BadRequestException("Offered book cannot be the same as requested book.");
             }
 
             // Prevent offering books that are currently in an active exchange/loan
             if (exchangeRequestRepository.existsByBookIdAndStatusIn(offeredBook.getId(), ACTIVE_EXCHANGE_STATUSES) ||
                 exchangeRequestRepository.existsByOfferedBookIdAndStatusIn(offeredBook.getId(), ACTIVE_EXCHANGE_STATUSES)) {
-                throw new IllegalArgumentException("Your offered book is currently in an active exchange and is not available.");
+                throw new com.hebee.bookswap.exception.ConflictException("Your offered book is currently in an active exchange and is not available.");
             }
         }
 

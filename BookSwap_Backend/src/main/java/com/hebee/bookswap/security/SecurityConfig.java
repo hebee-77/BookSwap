@@ -47,14 +47,32 @@ public class SecurityConfig {
             )
             .exceptionHandling(exc -> exc
                 .authenticationEntryPoint((request, response, authException) -> {
-                    response.setContentType("application/json");
+                    response.setContentType("application/json;charset=UTF-8");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"message\": \"Authentication required\"}");
+                    com.hebee.bookswap.dto.ErrorResponse error = new com.hebee.bookswap.dto.ErrorResponse(
+                            HttpServletResponse.SC_UNAUTHORIZED,
+                            "UNAUTHORIZED",
+                            "Authentication required. Please log in to continue.",
+                            request.getRequestURI()
+                    );
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+                    mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                    response.getWriter().write(mapper.writeValueAsString(error));
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
-                    response.setContentType("application/json");
+                    response.setContentType("application/json;charset=UTF-8");
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.getWriter().write("{\"message\": \"Access denied\"}");
+                    com.hebee.bookswap.dto.ErrorResponse error = new com.hebee.bookswap.dto.ErrorResponse(
+                            HttpServletResponse.SC_FORBIDDEN,
+                            "FORBIDDEN",
+                            "You do not have permission to perform this action.",
+                            request.getRequestURI()
+                    );
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+                    mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                    response.getWriter().write(mapper.writeValueAsString(error));
                 })
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

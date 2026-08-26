@@ -103,7 +103,7 @@ public class BookServiceImpl implements BookService {
         User currentUser = getAuthenticatedUser();
 
         if (!book.getOwner().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("Access denied");
+            throw new AccessDeniedException("You do not have permission to modify this book.");
         }
 
         book.setTitle(request.getTitle());
@@ -141,13 +141,13 @@ public class BookServiceImpl implements BookService {
                 .anyMatch(role -> role.getName().equalsIgnoreCase("ADMIN"));
 
         if (!book.getOwner().getId().equals(currentUser.getId()) && !isAdmin) {
-            throw new AccessDeniedException("Access denied");
+            throw new AccessDeniedException("You do not have permission to delete this book.");
         }
 
         boolean hasAccepted = exchangeRequestRepository.existsByBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED)
                 || exchangeRequestRepository.existsByOfferedBookIdAndStatus(id, ExchangeRequestStatus.ACCEPTED);
         if (hasAccepted) {
-            throw new IllegalArgumentException("Cannot delete a book with an accepted exchange request");
+            throw new com.hebee.bookswap.exception.ConflictException("This book cannot be deleted because it is associated with an existing exchange.");
         }
 
         String imageUrl = book.getImageUrl();

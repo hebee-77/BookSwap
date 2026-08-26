@@ -36,7 +36,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse createUser(UserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new com.hebee.bookswap.exception.ConflictException("An account with this email address already exists.");
         }
 
         User user = userMapper.toEntity(request);

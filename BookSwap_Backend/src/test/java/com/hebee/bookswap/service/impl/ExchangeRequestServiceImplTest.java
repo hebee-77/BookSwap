@@ -148,7 +148,7 @@ public class ExchangeRequestServiceImplTest {
                 .thenReturn(false);
         when(exchangeRequestRepository.existsByBookIdAndStatusIn(eq(101L), any())).thenReturn(true);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+        com.hebee.bookswap.exception.ConflictException ex = assertThrows(com.hebee.bookswap.exception.ConflictException.class, () ->
                 exchangeRequestService.createRequest(request)
         );
         assertTrue(ex.getMessage().contains("currently in an active exchange"));
@@ -163,7 +163,7 @@ public class ExchangeRequestServiceImplTest {
         when(bookRepository.findById(101L)).thenReturn(Optional.of(requestedBook));
         when(bookRepository.findById(202L)).thenReturn(Optional.of(offeredBook));
 
-        assertThrows(IllegalArgumentException.class, () -> exchangeRequestService.createRequest(request));
+        assertThrows(com.hebee.bookswap.exception.BadRequestException.class, () -> exchangeRequestService.createRequest(request));
     }
 
     @Test

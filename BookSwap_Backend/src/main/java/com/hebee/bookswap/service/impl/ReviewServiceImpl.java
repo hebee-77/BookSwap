@@ -45,7 +45,7 @@ public class ReviewServiceImpl implements ReviewService {
 
         // 2. Validate status (must be ACCEPTED)
         if (exchangeRequest.getStatus() != ExchangeRequestStatus.ACCEPTED) {
-            throw new IllegalArgumentException("You can only review exchanges that have been accepted");
+            throw new com.hebee.bookswap.exception.BadRequestException("You can only review exchanges that have been accepted.");
         }
 
         // 3. Resolve reviewer & participants
@@ -53,7 +53,7 @@ public class ReviewServiceImpl implements ReviewService {
         User owner = exchangeRequest.getOwner() != null ? exchangeRequest.getOwner() : exchangeRequest.getBook().getOwner();
 
         if (!reviewerId.equals(requester.getId()) && !reviewerId.equals(owner.getId())) {
-            throw new IllegalArgumentException("You are not a participant in this exchange");
+            throw new com.hebee.bookswap.exception.ForbiddenException("You are not a participant in this exchange.");
         }
 
         // 4. Resolve reviewed user
@@ -62,12 +62,12 @@ public class ReviewServiceImpl implements ReviewService {
 
         // 5. Prevent self review
         if (reviewer.getId().equals(reviewedUser.getId())) {
-            throw new IllegalArgumentException("You cannot review yourself");
+            throw new com.hebee.bookswap.exception.BadRequestException("You cannot review yourself.");
         }
 
         // 6. Check duplicate reviews
         if (reviewRepository.existsByExchangeRequestIdAndReviewerId(exchangeRequest.getId(), reviewer.getId())) {
-            throw new IllegalArgumentException("You have already submitted a review for this exchange");
+            throw new com.hebee.bookswap.exception.ConflictException("You have already submitted a review for this exchange.");
         }
 
         // 7. Save Review
@@ -118,7 +118,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
         if (!isAdmin && !review.getReviewer().getId().equals(currentUserId)) {
-            throw new AccessDeniedException("You do not have permission to delete this review");
+            throw new com.hebee.bookswap.exception.ForbiddenException("You do not have permission to delete this review.");
         }
 
         reviewRepository.delete(review);
