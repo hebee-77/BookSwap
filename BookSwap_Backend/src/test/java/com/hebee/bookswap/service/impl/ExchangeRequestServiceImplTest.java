@@ -571,4 +571,50 @@ public class ExchangeRequestServiceImplTest {
         assertEquals(1, history.size());
         assertEquals(ExchangeEventType.EXCHANGE_CREATED, history.get(0).getEventType());
     }
+
+    @Test
+    void testDeleteExchange_Success() {
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(requester));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.COMPLETED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        ExchangeHistory h1 = new ExchangeHistory(exchangeRequest, requester, ExchangeEventType.EXCHANGE_CREATED, "Created");
+        when(exchangeHistoryRepository.findByExchangeRequestIdOrderByCreatedAtAsc(10L)).thenReturn(List.of(h1));
+
+        ReturnVerification rv = new ReturnVerification(exchangeRequest, "hash", LocalDateTime.now().plusMinutes(10), 3);
+        when(returnVerificationRepository.findByExchangeRequestIdOrderByCreatedAtDesc(10L)).thenReturn(List.of(rv));
+
+        Conversation conv = new Conversation(exchangeRequest);
+        when(conversationRepository.findByExchangeRequestId(10L)).thenReturn(List.of(conv));
+
+        Review rev = new Review(requester, sender, exchangeRequest, 5, "Great!");
+        when(reviewRepository.findByExchangeRequestId(10L)).thenReturn(List.of(rev));
+
+        exchangeRequestService.deleteExchange(10L);
+
+        verify(exchangeHistoryRepository, times(1)).deleteAll(List.of(h1));
+        verify(returnVerificationRepository, times(1)).deleteAll(List.of(rv));
+        assertNull(conv.getExchangeRequest());
+        verify(conversationRepository, times(1)).save(conv);
+        verify(reviewRepository, times(1)).deleteAll(List.of(rev));
+        verify(exchangeRequestRepository, times(1)).delete(exchangeRequest);
+    }
+
+    @Test
+    void testDeleteExchange_AccessDenied_WhenNotParticipant() {
+        User otherUser = new User("Other User", "other@example.com", "password");
+        otherUser.setId(99L);
+        when(userRepository.findByEmail("requester@example.com")).thenReturn(Optional.of(otherUser));
+
+        ExchangeRequest exchangeRequest = new ExchangeRequest(requester, sender, requestedBook, offeredBook, ExchangeRequestStatus.COMPLETED);
+        exchangeRequest.setId(10L);
+
+        when(exchangeRequestRepository.findById(10L)).thenReturn(Optional.of(exchangeRequest));
+
+        assertThrows(AccessDeniedException.class, () -> exchangeRequestService.deleteExchange(10L));
+        verify(exchangeRequestRepository, never()).delete(any());
+    }
 }

@@ -133,7 +133,7 @@ public class ReviewServiceImpl implements ReviewService {
                 review.getReviewedUser().getName(),
                 review.getRating(),
                 review.getComment(),
-                review.getExchangeRequest().getId(),
+                review.getExchangeRequest() != null ? review.getExchangeRequest().getId() : null,
                 review.getCreatedAt()
         );
     }

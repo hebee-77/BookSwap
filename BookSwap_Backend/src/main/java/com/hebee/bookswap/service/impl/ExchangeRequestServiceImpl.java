@@ -878,11 +878,10 @@ public class ExchangeRequestServiceImpl implements ExchangeRequestService {
             conversationRepository.save(c);
         }
 
-        // 4. Unlink reviews if any
+        // 4. Delete associated reviews if any
         List<Review> reviews = reviewRepository.findByExchangeRequestId(exchangeId);
-        for (Review r : reviews) {
-            r.setExchangeRequest(null);
-            reviewRepository.save(r);
+        if (!reviews.isEmpty()) {
+            reviewRepository.deleteAll(reviews);
         }
 
         // 5. Delete exchange request
