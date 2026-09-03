@@ -102,11 +102,6 @@ export const AddBookPage: React.FC = () => {
       toast.success('Book listed successfully!');
       navigate(`/books/${data.id}`);
     },
-    onError: (err: any) => {
-      console.error('Create book error:', err);
-      const msg = err.response?.data?.message || 'Failed to list book. Please try again.';
-      toast.error(msg);
-    },
   });
 
   const onSubmit = (data: BookFormData) => {

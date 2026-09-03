@@ -31,10 +31,6 @@ export const MyReviewsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['average-rating'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to delete review. Please try again.';
-      toast.error(msg);
-    },
     onSettled: () => {
       setDeletingId(null);
     },

@@ -55,11 +55,6 @@ export const SwapRequestDialog: React.FC<SwapRequestDialogProps> = ({ isOpen, on
       toast.success('Swap request sent successfully!');
       onClose();
     },
-    onError: (err: any) => {
-      console.error('Create request error:', err);
-      const msg = err.response?.data?.message || 'Failed to send request. Please try again.';
-      toast.error(msg);
-    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

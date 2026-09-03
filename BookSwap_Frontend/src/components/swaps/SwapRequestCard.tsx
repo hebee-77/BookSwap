@@ -61,11 +61,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
       toast.success('Exchange record deleted successfully');
-      setShowDeleteConfirm(false);
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to delete exchange record.';
-      toast.error(msg);
+    onSettled: () => {
       setShowDeleteConfirm(false);
     },
   });
@@ -107,11 +104,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
         queryClient.invalidateQueries({ queryKey: ['book', request.offeredBookId] });
       }
       toast.success('Swap request accepted!');
-      setShowConfirm(null);
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to accept request.';
-      toast.error(msg);
+    onSettled: () => {
       setShowConfirm(null);
     },
   });
@@ -123,11 +117,8 @@ export const SwapRequestCard: React.FC<SwapRequestCardProps> = ({ request }) => 
       queryClient.invalidateQueries({ queryKey: ['sent-swaps'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Swap request rejected');
-      setShowConfirm(null);
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to reject request.';
-      toast.error(msg);
+    onSettled: () => {
       setShowConfirm(null);
     },
   });

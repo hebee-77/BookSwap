@@ -130,11 +130,6 @@ export const EditBookPage: React.FC = () => {
       toast.success('Book updated successfully!');
       navigate(`/books/${bookId}`);
     },
-    onError: (err: any) => {
-      console.error('Update book error:', err);
-      const msg = err.response?.data?.message || 'Failed to update book. Please try again.';
-      toast.error(msg);
-    },
   });
 
   const onSubmit = (data: BookFormData) => {

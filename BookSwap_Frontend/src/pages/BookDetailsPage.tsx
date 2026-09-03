@@ -35,11 +35,6 @@ export const BookDetailsPage: React.FC = () => {
       toast.success('Book deleted successfully');
       navigate('/books');
     },
-    onError: (err: any) => {
-      console.error('Delete error:', err);
-      const msg = err.response?.data?.message || 'Failed to delete book. Please try again.';
-      toast.error(msg);
-    },
   });
 
   const handleDelete = () => {

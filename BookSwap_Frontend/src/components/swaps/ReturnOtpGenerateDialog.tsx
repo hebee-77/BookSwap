@@ -40,10 +40,6 @@ export const ReturnOtpGenerateDialog: React.FC<ReturnOtpGenerateDialogProps> = (
       toast.success('Return verification code generated successfully');
       onSuccess?.();
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to generate return verification code.';
-      toast.error(msg);
-    },
   });
 
   // Countdown timer effect

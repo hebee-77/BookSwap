@@ -73,10 +73,6 @@ export const ReturnActionDialog: React.FC<ReturnActionDialogProps> = ({
       onClose();
       onSuccess?.();
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to complete action. Please try again.';
-      toast.error(msg);
-    },
   });
 
   if (!isOpen) return null;

@@ -39,12 +39,8 @@ export const MyBooksPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['user-books', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
       toast.success('Book removed from shelf');
-      setDeleteBookId(null);
     },
-    onError: (err: any) => {
-      console.error('Delete error:', err);
-      const msg = err.response?.data?.message || 'Failed to delete book';
-      toast.error(msg);
+    onSettled: () => {
       setDeleteBookId(null);
     },
   });

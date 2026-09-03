@@ -38,10 +38,6 @@ export const NotificationsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('All notifications marked as read');
     },
-    onError: (err: any) => {
-      console.error(err);
-      toast.error('Failed to mark notifications read');
-    },
   });
 
   // Mutation for deleting a notification

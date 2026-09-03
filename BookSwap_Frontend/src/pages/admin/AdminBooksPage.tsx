@@ -63,15 +63,6 @@ export const AdminBooksPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['user-books'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exchanges'] });
     },
-    onError: (error: any) => {
-      // Map backend error responses
-      const errorMessage =
-        error.response?.data?.message ||
-        (error.response?.status === 400
-          ? 'This book cannot be deleted because it has an existing exchange history.'
-          : 'Failed to delete book. Please try again.');
-      toast.error(errorMessage);
-    },
   });
 
   const books = data?.content || [];

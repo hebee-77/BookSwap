@@ -47,7 +47,6 @@ export const ReturnOtpVerifyDialog: React.FC<ReturnOtpVerifyDialogProps> = ({
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Verification failed. Please check the code and try again.';
       setErrorMessage(msg);
-      toast.error(msg);
     },
   });
 

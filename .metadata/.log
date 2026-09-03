@@ -394,3 +394,16 @@ java.lang.NullPointerException: Cannot invoke "org.osgi.framework.BundleContext.
 	 at org.eclipse.oomph.internal.ui.EarlyStart.run(EarlyStart.java:119)
 	 at org.eclipse.oomph.internal.ui.EarlyStart$1.run(EarlyStart.java:98)
 	 at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+!SESSION 2026-09-03 17:05:29.262 -----------------------------------------------
+eclipse.buildId=4.38.0.20251204-0849
+java.version=21.0.9
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=macosx, ARCH=aarch64, WS=cocoa, NL=en_IN
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/hebee/.eclipse_keyring
+Command-line arguments:  -os macosx -ws cocoa -arch aarch64 -product org.eclipse.epp.package.jee.product -keyring /Users/hebee/.eclipse_keyring -data /Users/hebee/Spring/BookSwap
+
+!ENTRY ch.qos.logback.classic 1 0 2026-09-03 17:05:29.997
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY ch.qos.logback.classic 1 0 2026-09-03 17:05:30.710
+!MESSAGE Logback config file: /Users/hebee/Spring/BookSwap/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.7.101.20251017-1242.xml
